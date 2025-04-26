@@ -1,85 +1,82 @@
-import { NextResponse } from "next/server"
-import { testMailgunConfiguration, testMailgunAPI } from "@/lib/email"
+import { type NextRequest, NextResponse } from "next/server"
+import { sendEmail, type EmailService, type EmailResponse } from "@/lib/email"
 
-export async function GET() {
+export async function POST(request: NextRequest) {
   try {
-    // First try SMTP
-    console.log("Attempting to send email via Mailgun SMTP...")
-    const smtpResult = await testMailgunConfiguration()
+    // Parse request body
+    let requestData
+    try {
+      requestData = await request.json()
+    } catch (error) {
+      return NextResponse.json({ success: false, message: "Invalid JSON in request body" }, { status: 400 })
+    }
 
-    // If SMTP succeeds, return success
-    if (smtpResult.success) {
+    const { recipient, subject, message, method = "smtp", useEuRegion = false } = requestData
+
+    // Set region environment variable for this request
+    process.env.MAILGUN_EU_REGION = useEuRegion ? "true" : "false"
+
+    // Validate required fields
+    if (!recipient || !subject || !message) {
       return NextResponse.json(
-        {
-          message: smtpResult.message,
-          messageId: smtpResult.messageId,
-          isPreviewMode: smtpResult.isPreviewMode,
-          method: "smtp",
-        },
-        { status: 200 },
+        { success: false, message: "Missing required fields: recipient, subject, or message" },
+        { status: 400 },
       )
     }
 
-    // If SMTP fails, try Mailgun API
-    console.log("SMTP method failed, trying Mailgun API method...")
-    const apiResult = await testMailgunAPI()
+    // Get sender from environment or use fallback
+    const sender = process.env.EMAIL_FROM || "noreply@directpaydr.com"
 
-    // If Mailgun API succeeds, return success
-    if (apiResult.success) {
-      return NextResponse.json(
-        {
-          message: apiResult.message,
-          messageId: apiResult.messageId,
-          method: "mailgun-api",
+    // Send test email
+    const emailMethod = (method as EmailService) || "smtp"
+    console.log(`Sending test email via ${emailMethod} to ${recipient}`)
+
+    const result = await sendEmail(
+      {
+        to: recipient,
+        from: sender,
+        subject,
+        text: message,
+        html: `<p>${message}</p>`,
+      },
+      emailMethod,
+    )
+
+    // Return response based on email result
+    if (result.success) {
+      return NextResponse.json(result)
+    } else {
+      console.error("Email error:", result)
+      return NextResponse.json(result, { status: 500 })
+    }
+  } catch (error: any) {
+    console.error("Test email API error:", error)
+
+    // Create detailed error response
+    const errorResponse: EmailResponse = {
+      success: false,
+      message: `Unexpected error: ${error.message}`,
+      error: {
+        name: error.name,
+        message: error.message,
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      },
+      details: {
+        method: "unknown",
+        region: process.env.MAILGUN_EU_REGION === "true" ? "eu" : "us",
+        configStatus: {
+          smtpServer: process.env.MAILGUN_SMTP_SERVER ? "configured" : "not configured",
+          smtpPort: process.env.MAILGUN_SMTP_PORT ? "configured" : "not configured",
+          smtpLogin: process.env.MAILGUN_SMTP_LOGIN ? "configured" : "not configured",
+          smtpPassword: process.env.MAILGUN_SMTP_PASSWORD ? "configured" : "not configured",
+          apiKey: process.env.MAILGUN_API_KEY ? "configured" : "not configured",
+          domain: process.env.MAILGUN_DOMAIN ? "configured" : "not configured",
+          emailFrom: process.env.EMAIL_FROM ? "configured" : "not configured",
+          testRecipient: process.env.TEST_EMAIL_RECIPIENT ? "configured" : "not configured",
         },
-        { status: 200 },
-      )
+      },
     }
 
-    // Both methods failed
-    console.log("Both Mailgun methods failed")
-
-    // Extract SMTP login domain for troubleshooting
-    const smtpLogin = process.env.MAILGUN_SMTP_LOGIN || ""
-    const smtpDomain = smtpLogin.split("@")[1] || ""
-    const apiDomain = process.env.MAILGUN_DOMAIN || ""
-
-    // Check if domains match
-    const domainsMatch = smtpDomain && apiDomain && smtpDomain === apiDomain
-
-    return NextResponse.json(
-      {
-        message: "Email test failed with both Mailgun methods",
-        smtpError: smtpResult.error,
-        smtpErrorCode: smtpResult.errorCode,
-        smtpErrorResponse: smtpResult.errorResponse,
-        apiError: apiResult.error,
-        apiStatus: apiResult.status,
-        apiStatusText: apiResult.statusText,
-        mailgunConfig: {
-          smtpServer: process.env.MAILGUN_SMTP_SERVER ? "configured" : "missing",
-          smtpPort: process.env.MAILGUN_SMTP_PORT ? "configured" : "missing",
-          smtpLogin: process.env.MAILGUN_SMTP_LOGIN ? "configured" : "missing",
-          smtpPassword: process.env.MAILGUN_SMTP_PASSWORD ? "configured" : "missing",
-          apiKey: process.env.MAILGUN_API_KEY ? "configured" : "missing",
-          domain: process.env.MAILGUN_DOMAIN ? "configured" : "missing",
-          emailFrom: process.env.EMAIL_FROM ? "configured" : "missing",
-          testRecipient: process.env.TEST_EMAIL_RECIPIENT ? "configured" : "missing",
-          euRegion: process.env.MAILGUN_EU_REGION === "true" ? "yes" : "no",
-          smtpDomain: smtpDomain || "unknown",
-          apiDomain: apiDomain || "unknown",
-          domainsMatch: domainsMatch ? "yes" : "no",
-        },
-      },
-      { status: 500 },
-    )
-  } catch (error) {
-    return NextResponse.json(
-      {
-        message: "Server error",
-        error: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    )
+    return NextResponse.json(errorResponse, { status: 500 })
   }
 }
