@@ -1,28 +1,48 @@
 import { NextResponse } from "next/server"
-import { testMailgunConfiguration } from "@/lib/email"
+import { testMailgunConfiguration, testMailgunAPI } from "@/lib/email"
 
 export async function GET() {
   try {
-    const result = await testMailgunConfiguration()
+    // First try SMTP
+    const smtpResult = await testMailgunConfiguration()
 
-    if (result.success) {
-      return NextResponse.json(
-        {
-          message: result.message,
-          messageId: result.messageId,
-          isPreviewMode: result.isPreviewMode,
-        },
-        { status: 200 },
-      )
-    } else {
-      return NextResponse.json(
-        {
-          message: "Email test failed",
-          error: result.error,
-        },
-        { status: 500 },
-      )
+    // If SMTP fails, try API
+    if (!smtpResult.success) {
+      console.log("SMTP method failed, trying API method...")
+      const apiResult = await testMailgunAPI()
+
+      if (apiResult.success) {
+        return NextResponse.json(
+          {
+            message: apiResult.message,
+            messageId: apiResult.messageId,
+            method: "api",
+          },
+          { status: 200 },
+        )
+      } else {
+        // Both methods failed
+        return NextResponse.json(
+          {
+            message: "Email test failed with both SMTP and API methods",
+            smtpError: smtpResult.error,
+            apiError: apiResult.error,
+          },
+          { status: 500 },
+        )
+      }
     }
+
+    // SMTP succeeded
+    return NextResponse.json(
+      {
+        message: smtpResult.message,
+        messageId: smtpResult.messageId,
+        isPreviewMode: smtpResult.isPreviewMode,
+        method: "smtp",
+      },
+      { status: 200 },
+    )
   } catch (error) {
     return NextResponse.json(
       {

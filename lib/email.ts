@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer"
 
-// Create a mock transporter for environments where DNS lookup isn't available
+// Configure email transporter for Mailgun
 const createTransporter = () => {
   // Check if we're in a preview environment (like Next.js)
   const isPreviewEnvironment = typeof window !== "undefined" || process.env.NODE_ENV === "development"
@@ -20,6 +20,7 @@ const createTransporter = () => {
   }
 
   // Use real nodemailer transporter for production
+  // Using more reliable configuration for Mailgun
   return nodemailer.createTransport({
     host: process.env.MAILGUN_SMTP_SERVER || "smtp.mailgun.org",
     port: Number(process.env.MAILGUN_SMTP_PORT || 587),
@@ -27,8 +28,12 @@ const createTransporter = () => {
       user: process.env.MAILGUN_SMTP_LOGIN,
       pass: process.env.MAILGUN_SMTP_PASSWORD,
     },
-    secure: false,
+    secure: false, // Use STARTTLS instead of SSL
     requireTLS: true,
+    connectionTimeout: 10000, // 10 seconds timeout
+    greetingTimeout: 10000, // 10 seconds for greeting timeout
+    debug: true, // Enable debug logging
+    logger: true, // Enable logger
   })
 }
 
@@ -133,7 +138,22 @@ export async function testMailgunConfiguration() {
       `,
     }
 
-    const info = await transporter.sendMail(testMailOptions)
+    // Create a new transporter for testing to ensure fresh connection
+    const testTransporter = createTransporter()
+
+    // Log configuration for debugging (sensitive info redacted)
+    console.log("Mailgun Configuration:", {
+      host: process.env.MAILGUN_SMTP_SERVER || "smtp.mailgun.org",
+      port: Number(process.env.MAILGUN_SMTP_PORT || 587),
+      auth: {
+        user: process.env.MAILGUN_SMTP_LOGIN ? "CONFIGURED" : "MISSING",
+        pass: process.env.MAILGUN_SMTP_PASSWORD ? "CONFIGURED" : "MISSING",
+      },
+      from: process.env.EMAIL_FROM || "noreply@directpaydr.com",
+      to: testRecipient,
+    })
+
+    const info = await testTransporter.sendMail(testMailOptions)
 
     // Check if we're in preview mode
     const isPreview = typeof window !== "undefined" || process.env.NODE_ENV === "development"
@@ -150,7 +170,77 @@ export async function testMailgunConfiguration() {
     console.error("Error sending test email:", error)
     return {
       success: false,
-      message: "Failed to send test email",
+      message: "Failed to send email",
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
+// Alternative method using Mailgun API directly
+export async function testMailgunAPI() {
+  try {
+    const apiKey = process.env.MAILGUN_API_KEY
+    const domain = process.env.MAILGUN_DOMAIN
+    const testRecipient = process.env.TEST_EMAIL_RECIPIENT || "test@example.com"
+
+    if (!apiKey || !domain) {
+      return {
+        success: false,
+        message: "Mailgun API key or domain not configured",
+        error: "Missing API key or domain",
+      }
+    }
+
+    const formData = new FormData()
+    formData.append("from", `DirectPayDr <mailgun@${domain}>`)
+    formData.append("to", testRecipient)
+    formData.append("subject", "DirectPayDr Test Email via Mailgun API")
+    formData.append(
+      "html",
+      `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #1E40AF; padding: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">DirectPayDr</h1>
+        </div>
+        <div style="padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
+          <h2>Test Email via API</h2>
+          <p>This is a test email sent via the Mailgun API to verify your configuration.</p>
+          <p>If you received this email, your Mailgun API is properly configured!</p>
+          <p>Time sent: ${new Date().toLocaleString()}</p>
+          <p>Best regards,<br>The DirectPayDr Team</p>
+        </div>
+      </div>
+    `,
+    )
+
+    const response = await fetch(`https://api.mailgun.net/v3/${domain}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`api:${apiKey}`).toString("base64")}`,
+      },
+      body: formData,
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      return {
+        success: true,
+        message: "Test email sent successfully via Mailgun API!",
+        messageId: data.id,
+      }
+    } else {
+      return {
+        success: false,
+        message: "Failed to send email via Mailgun API",
+        error: data.message || "Unknown error",
+      }
+    }
+  } catch (error) {
+    console.error("Error sending test email via API:", error)
+    return {
+      success: false,
+      message: "Failed to send email via Mailgun API",
       error: error instanceof Error ? error.message : String(error),
     }
   }
