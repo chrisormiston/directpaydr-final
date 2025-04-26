@@ -20,8 +20,14 @@ const createTransporter = () => {
   }
 
   // Use real nodemailer transporter for production
+  // Try EU server if US server fails
+  const host = process.env.MAILGUN_SMTP_SERVER || "smtp.mailgun.org"
+  const isEU = host.includes("eu")
+
+  console.log(`Using Mailgun SMTP server: ${host} (${isEU ? "EU" : "US"} region)`)
+
   return nodemailer.createTransport({
-    host: process.env.MAILGUN_SMTP_SERVER || "smtp.mailgun.org",
+    host: host,
     port: Number(process.env.MAILGUN_SMTP_PORT || 587),
     auth: {
       user: process.env.MAILGUN_SMTP_LOGIN,
@@ -29,9 +35,9 @@ const createTransporter = () => {
     },
     secure: false, // Use STARTTLS
     requireTLS: true,
-    connectionTimeout: 30000, // 30 seconds timeout
-    greetingTimeout: 30000, // 30 seconds for greeting timeout
-    socketTimeout: 30000, // 30 seconds socket timeout
+    connectionTimeout: 60000, // 60 seconds timeout (increased)
+    greetingTimeout: 60000, // 60 seconds for greeting timeout (increased)
+    socketTimeout: 60000, // 60 seconds socket timeout (increased)
     debug: true, // Enable debug logging
     logger: true, // Enable logger
   })
@@ -114,6 +120,8 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 export async function testMailgunConfiguration() {
   try {
     const testRecipient = process.env.TEST_EMAIL_RECIPIENT || "test@example.com"
+    const smtpLogin = process.env.MAILGUN_SMTP_LOGIN || ""
+    const domain = smtpLogin.split("@")[1] || ""
 
     // Log configuration for debugging (sensitive info redacted)
     console.log("Mailgun SMTP Configuration:", {
@@ -125,10 +133,11 @@ export async function testMailgunConfiguration() {
       },
       from: process.env.EMAIL_FROM || "noreply@directpaydr.com",
       to: testRecipient,
+      domain: domain,
     })
 
     const testMailOptions = {
-      from: `"DirectPayDr" <${process.env.EMAIL_FROM || "noreply@directpaydr.com"}>`,
+      from: `"DirectPayDr" <${process.env.EMAIL_FROM || `mailgun@${domain}`}>`,
       to: testRecipient,
       subject: "Mailgun SMTP Test Email",
       html: `
@@ -152,7 +161,10 @@ export async function testMailgunConfiguration() {
 
     // Create a new transporter for testing to ensure fresh connection
     const testTransporter = createTransporter()
+
+    console.log("Attempting to send test email via SMTP...")
     const info = await testTransporter.sendMail(testMailOptions)
+    console.log("SMTP test email sent successfully:", info.messageId)
 
     // Check if we're in preview mode
     const isPreview = typeof window !== "undefined" || process.env.NODE_ENV === "development"
@@ -167,10 +179,28 @@ export async function testMailgunConfiguration() {
     }
   } catch (error) {
     console.error("Error sending test email via SMTP:", error)
+
+    // Extract more detailed error information
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    let errorCode = ""
+    let errorResponse = ""
+
+    if (error instanceof Error && "code" in error) {
+      // @ts-ignore
+      errorCode = error.code || ""
+    }
+
+    if (error instanceof Error && "response" in error) {
+      // @ts-ignore
+      errorResponse = error.response || ""
+    }
+
     return {
       success: false,
       message: "Failed to send email via SMTP",
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
+      errorCode: errorCode,
+      errorResponse: errorResponse,
     }
   }
 }
@@ -181,6 +211,8 @@ export async function testMailgunAPI() {
     const apiKey = process.env.MAILGUN_API_KEY
     const domain = process.env.MAILGUN_DOMAIN
     const testRecipient = process.env.TEST_EMAIL_RECIPIENT || "test@example.com"
+    const isEU = process.env.MAILGUN_EU_REGION === "true"
+    const baseUrl = isEU ? "https://api.eu.mailgun.net/v3" : "https://api.mailgun.net/v3"
 
     if (!apiKey || !domain) {
       return {
@@ -195,10 +227,12 @@ export async function testMailgunAPI() {
       apiKey: apiKey ? "CONFIGURED" : "MISSING",
       domain,
       to: testRecipient,
+      region: isEU ? "EU" : "US",
+      baseUrl,
     })
 
     // Use fetch with proper error handling
-    const url = `https://api.mailgun.net/v3/${domain}/messages`
+    const url = `${baseUrl}/${domain}/messages`
     const auth = Buffer.from(`api:${apiKey}`).toString("base64")
 
     // Create form data
@@ -237,30 +271,39 @@ export async function testMailgunAPI() {
 
     console.log("Mailgun API response status:", response.status, response.statusText)
 
+    // Get the response text first for debugging
+    const responseText = await response.text()
+    console.log("Mailgun API response text:", responseText)
+
     // Check if response is ok
     if (!response.ok) {
-      const text = await response.text()
-      console.error("Mailgun API error response:", text)
-
       let errorMessage = `HTTP error ${response.status}: ${response.statusText}`
       try {
         // Try to parse as JSON, but handle text responses too
-        const errorData = JSON.parse(text)
+        const errorData = JSON.parse(responseText)
         errorMessage = errorData.message || errorMessage
       } catch (e) {
         // If it's not JSON, use the text directly
-        errorMessage = text || errorMessage
+        errorMessage = responseText || errorMessage
       }
 
       return {
         success: false,
         message: "Failed to send email via Mailgun API",
         error: errorMessage,
+        status: response.status,
+        statusText: response.statusText,
       }
     }
 
-    // Parse the JSON response
-    const data = await response.json()
+    // Parse the JSON response if possible
+    let data
+    try {
+      data = JSON.parse(responseText)
+    } catch (e) {
+      data = { id: "unknown", message: "Response was not valid JSON" }
+    }
+
     console.log("Mailgun API success response:", data)
 
     return {

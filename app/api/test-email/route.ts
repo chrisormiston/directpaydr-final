@@ -38,11 +38,24 @@ export async function GET() {
 
     // Both methods failed
     console.log("Both Mailgun methods failed")
+
+    // Extract SMTP login domain for troubleshooting
+    const smtpLogin = process.env.MAILGUN_SMTP_LOGIN || ""
+    const smtpDomain = smtpLogin.split("@")[1] || ""
+    const apiDomain = process.env.MAILGUN_DOMAIN || ""
+
+    // Check if domains match
+    const domainsMatch = smtpDomain && apiDomain && smtpDomain === apiDomain
+
     return NextResponse.json(
       {
         message: "Email test failed with both Mailgun methods",
         smtpError: smtpResult.error,
+        smtpErrorCode: smtpResult.errorCode,
+        smtpErrorResponse: smtpResult.errorResponse,
         apiError: apiResult.error,
+        apiStatus: apiResult.status,
+        apiStatusText: apiResult.statusText,
         mailgunConfig: {
           smtpServer: process.env.MAILGUN_SMTP_SERVER ? "configured" : "missing",
           smtpPort: process.env.MAILGUN_SMTP_PORT ? "configured" : "missing",
@@ -52,6 +65,10 @@ export async function GET() {
           domain: process.env.MAILGUN_DOMAIN ? "configured" : "missing",
           emailFrom: process.env.EMAIL_FROM ? "configured" : "missing",
           testRecipient: process.env.TEST_EMAIL_RECIPIENT ? "configured" : "missing",
+          euRegion: process.env.MAILGUN_EU_REGION === "true" ? "yes" : "no",
+          smtpDomain: smtpDomain || "unknown",
+          apiDomain: apiDomain || "unknown",
+          domainsMatch: domainsMatch ? "yes" : "no",
         },
       },
       { status: 500 },
