@@ -37,11 +37,7 @@ export default function FloridaPage() {
             <div className="flex items-center justify-center">
               <div className="relative h-[300px] w-full overflow-hidden rounded-xl lg:h-[400px]">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center">
-                  <img
-                    alt="Florida healthcare map"
-                    className="mx-auto h-auto max-w-[80%]"
-                    src="/usa-map-locations.png"
-                  />
+                  <img alt="Florida county map" className="mx-auto h-auto max-w-[80%]" src="/florida-county-map.png" />
                 </div>
               </div>
             </div>

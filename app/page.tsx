@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { AuthStatus } from "@/components/auth-status"
 
 export default function Home() {
   return (
@@ -406,7 +407,12 @@ export default function Home() {
                 </Button>
               </div>
               <div className="relative h-[300px] md:h-[400px]">
-                <Image src="/usa-map-locations.png" alt="Provider locations map" fill className="object-contain" />
+                <Image
+                  src="/usa-map-locations.png"
+                  alt="Provider locations across the United States"
+                  fill
+                  className="object-contain"
+                />
               </div>
             </div>
           </div>
@@ -431,6 +437,11 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">DirectPayDr Home</h1>
+        <AuthStatus />
+        {/* Rest of your home page content */}
+      </div>
     </div>
   )
 }
