@@ -38,9 +38,9 @@ export default function ArizonaPage() {
               <div className="relative h-[300px] w-full overflow-hidden rounded-xl lg:h-[400px]">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center">
                   <img
-                    alt="Arizona healthcare map"
+                    alt="Arizona healthcare"
                     className="mx-auto h-auto max-w-[80%]"
-                    src="/usa-map-locations.png"
+                    src="/arizona.jpg"
                   />
                 </div>
               </div>
