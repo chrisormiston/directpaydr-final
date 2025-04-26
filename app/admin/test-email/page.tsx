@@ -4,8 +4,9 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { CheckCircle, AlertCircle, Loader2, Info } from "lucide-react"
+import { CheckCircle, AlertCircle, Loader2, Info, HelpCircle } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 
 export default function TestEmailPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -18,6 +19,16 @@ export default function TestEmailPage() {
     messageId?: string
     isPreviewMode?: boolean
     method?: string
+    mailgunConfig?: {
+      smtpServer: string
+      smtpPort: string
+      smtpLogin: string
+      smtpPassword: string
+      apiKey: string
+      domain: string
+      emailFrom: string
+      testRecipient: string
+    }
   } | null>(null)
 
   const handleTestEmail = async () => {
@@ -43,6 +54,7 @@ export default function TestEmailPage() {
           error: data.error || "Unknown error occurred",
           smtpError: data.smtpError,
           apiError: data.apiError,
+          mailgunConfig: data.mailgunConfig,
         })
       }
     } catch (error) {
@@ -74,7 +86,8 @@ export default function TestEmailPage() {
                 {result.message}
                 {result.method && (
                   <div className="mt-2 text-sm">
-                    <span className="font-semibold">Method:</span> {result.method === "smtp" ? "SMTP" : "Mailgun API"}
+                    <span className="font-semibold">Method:</span>{" "}
+                    {result.method === "smtp" ? "Mailgun SMTP" : "Mailgun API"}
                   </div>
                 )}
                 {result.isPreviewMode && (
@@ -89,8 +102,11 @@ export default function TestEmailPage() {
                   </div>
                 )}
                 {result.error && (
-                  <div className="mt-2 text-sm bg-gray-100 p-2 rounded">
-                    <code>{result.error}</code>
+                  <div className="mt-2 text-sm">
+                    <span className="font-semibold">Error:</span>
+                    <div className="bg-gray-100 p-2 rounded mt-1">
+                      <code>{result.error}</code>
+                    </div>
                   </div>
                 )}
                 {result.smtpError && (
@@ -106,6 +122,77 @@ export default function TestEmailPage() {
                     <span className="font-semibold">API Error:</span>
                     <div className="bg-gray-100 p-2 rounded mt-1">
                       <code>{result.apiError}</code>
+                    </div>
+                  </div>
+                )}
+                {result.mailgunConfig && (
+                  <div className="mt-4 text-sm">
+                    <span className="font-semibold">Configuration Status:</span>
+                    <div className="bg-gray-100 p-2 rounded mt-1 space-y-1">
+                      <div>
+                        SMTP Server:{" "}
+                        <span
+                          className={result.mailgunConfig.smtpServer === "missing" ? "text-red-500" : "text-green-500"}
+                        >
+                          {result.mailgunConfig.smtpServer}
+                        </span>
+                      </div>
+                      <div>
+                        SMTP Port:{" "}
+                        <span
+                          className={result.mailgunConfig.smtpPort === "missing" ? "text-red-500" : "text-green-500"}
+                        >
+                          {result.mailgunConfig.smtpPort}
+                        </span>
+                      </div>
+                      <div>
+                        SMTP Login:{" "}
+                        <span
+                          className={result.mailgunConfig.smtpLogin === "missing" ? "text-red-500" : "text-green-500"}
+                        >
+                          {result.mailgunConfig.smtpLogin}
+                        </span>
+                      </div>
+                      <div>
+                        SMTP Password:{" "}
+                        <span
+                          className={
+                            result.mailgunConfig.smtpPassword === "missing" ? "text-red-500" : "text-green-500"
+                          }
+                        >
+                          {result.mailgunConfig.smtpPassword}
+                        </span>
+                      </div>
+                      <div>
+                        API Key:{" "}
+                        <span className={result.mailgunConfig.apiKey === "missing" ? "text-red-500" : "text-green-500"}>
+                          {result.mailgunConfig.apiKey}
+                        </span>
+                      </div>
+                      <div>
+                        Domain:{" "}
+                        <span className={result.mailgunConfig.domain === "missing" ? "text-red-500" : "text-green-500"}>
+                          {result.mailgunConfig.domain}
+                        </span>
+                      </div>
+                      <div>
+                        Email From:{" "}
+                        <span
+                          className={result.mailgunConfig.emailFrom === "missing" ? "text-red-500" : "text-green-500"}
+                        >
+                          {result.mailgunConfig.emailFrom}
+                        </span>
+                      </div>
+                      <div>
+                        Test Recipient:{" "}
+                        <span
+                          className={
+                            result.mailgunConfig.testRecipient === "missing" ? "text-red-500" : "text-green-500"
+                          }
+                        >
+                          {result.mailgunConfig.testRecipient}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -138,6 +225,40 @@ export default function TestEmailPage() {
                   </div>
                 </div>
               </div>
+
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="troubleshooting-smtp">
+                  <AccordionTrigger className="text-sm font-medium flex items-center">
+                    <HelpCircle className="h-4 w-4 mr-2" />
+                    Troubleshooting SMTP Issues
+                  </AccordionTrigger>
+                  <AccordionContent className="text-sm">
+                    <div className="space-y-2">
+                      <p>
+                        <strong>Greeting never received error:</strong> This typically indicates one of the following
+                        issues:
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 pl-4">
+                        <li>Network connectivity issues or firewall blocking the SMTP port</li>
+                        <li>Incorrect SMTP server address or port</li>
+                        <li>Server timeout due to slow connection</li>
+                        <li>Mailgun service disruption</li>
+                      </ul>
+
+                      <p className="mt-3">
+                        <strong>Recommended steps:</strong>
+                      </p>
+                      <ol className="list-decimal list-inside space-y-1 pl-4">
+                        <li>Verify your SMTP credentials in the Mailgun dashboard</li>
+                        <li>Check if your hosting provider allows outbound SMTP connections</li>
+                        <li>Try using the EU server (smtp.eu.mailgun.org) if you're using EU region</li>
+                        <li>Ensure your sender domain is properly verified in Mailgun</li>
+                        <li>Check Mailgun's status page for any service disruptions</li>
+                      </ol>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </TabsContent>
             <TabsContent value="api" className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-md">
@@ -146,7 +267,7 @@ export default function TestEmailPage() {
                   <div>
                     <h4 className="font-medium text-blue-800">Mailgun API Configuration</h4>
                     <p className="text-sm text-blue-700 mt-1">
-                      As a fallback, we can use the Mailgun API. Set up these variables:
+                      As an alternative to SMTP, you can use the Mailgun API. Set up these variables:
                     </p>
                     <ul className="text-sm text-blue-700 mt-2 list-disc list-inside space-y-1">
                       <li>MAILGUN_API_KEY (your Mailgun API key)</li>
@@ -156,6 +277,40 @@ export default function TestEmailPage() {
                   </div>
                 </div>
               </div>
+
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="troubleshooting-api">
+                  <AccordionTrigger className="text-sm font-medium flex items-center">
+                    <HelpCircle className="h-4 w-4 mr-2" />
+                    Troubleshooting API Issues
+                  </AccordionTrigger>
+                  <AccordionContent className="text-sm">
+                    <div className="space-y-2">
+                      <p>
+                        <strong>Forbidden error:</strong> This typically indicates one of the following issues:
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 pl-4">
+                        <li>Invalid API key or insufficient permissions</li>
+                        <li>Domain not properly verified or authorized</li>
+                        <li>Sending to unauthorized recipients (for sandbox domains)</li>
+                        <li>Account restrictions or billing issues</li>
+                      </ul>
+
+                      <p className="mt-3">
+                        <strong>Recommended steps:</strong>
+                      </p>
+                      <ol className="list-decimal list-inside space-y-1 pl-4">
+                        <li>Verify your API key in the Mailgun dashboard</li>
+                        <li>Ensure you're using the correct API key type (private key)</li>
+                        <li>Check if your domain is properly verified and active</li>
+                        <li>If using a sandbox domain, ensure the recipient is authorized</li>
+                        <li>Check if your Mailgun account is in good standing</li>
+                        <li>Try using the EU endpoint if you're using EU region</li>
+                      </ol>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </TabsContent>
           </Tabs>
         </CardContent>

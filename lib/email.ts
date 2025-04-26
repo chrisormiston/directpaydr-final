@@ -20,7 +20,6 @@ const createTransporter = () => {
   }
 
   // Use real nodemailer transporter for production
-  // Using more reliable configuration for Mailgun
   return nodemailer.createTransport({
     host: process.env.MAILGUN_SMTP_SERVER || "smtp.mailgun.org",
     port: Number(process.env.MAILGUN_SMTP_PORT || 587),
@@ -28,10 +27,11 @@ const createTransporter = () => {
       user: process.env.MAILGUN_SMTP_LOGIN,
       pass: process.env.MAILGUN_SMTP_PASSWORD,
     },
-    secure: false, // Use STARTTLS instead of SSL
+    secure: false, // Use STARTTLS
     requireTLS: true,
-    connectionTimeout: 10000, // 10 seconds timeout
-    greetingTimeout: 10000, // 10 seconds for greeting timeout
+    connectionTimeout: 30000, // 30 seconds timeout
+    greetingTimeout: 30000, // 30 seconds for greeting timeout
+    socketTimeout: 30000, // 30 seconds socket timeout
     debug: true, // Enable debug logging
     logger: true, // Enable logger
   })
@@ -110,23 +110,35 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   return transporter.sendMail(mailOptions)
 }
 
-// Test email configuration
+// Test email configuration via SMTP
 export async function testMailgunConfiguration() {
   try {
     const testRecipient = process.env.TEST_EMAIL_RECIPIENT || "test@example.com"
 
+    // Log configuration for debugging (sensitive info redacted)
+    console.log("Mailgun SMTP Configuration:", {
+      host: process.env.MAILGUN_SMTP_SERVER || "smtp.mailgun.org",
+      port: Number(process.env.MAILGUN_SMTP_PORT || 587),
+      auth: {
+        user: process.env.MAILGUN_SMTP_LOGIN ? "CONFIGURED" : "MISSING",
+        pass: process.env.MAILGUN_SMTP_PASSWORD ? "CONFIGURED" : "MISSING",
+      },
+      from: process.env.EMAIL_FROM || "noreply@directpaydr.com",
+      to: testRecipient,
+    })
+
     const testMailOptions = {
       from: `"DirectPayDr" <${process.env.EMAIL_FROM || "noreply@directpaydr.com"}>`,
       to: testRecipient,
-      subject: "Mailgun Test Email",
+      subject: "Mailgun SMTP Test Email",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background-color: #1E40AF; padding: 20px; text-align: center;">
             <h1 style="color: white; margin: 0;">DirectPayDr</h1>
           </div>
           <div style="padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
-            <h2>Test Email</h2>
-            <p>This is a test email to verify that your Mailgun configuration is working correctly.</p>
+            <h2>Test Email via SMTP</h2>
+            <p>This is a test email to verify that your Mailgun SMTP configuration is working correctly.</p>
             <p>If you received this email, your email service is properly configured!</p>
             <p>Time sent: ${new Date().toLocaleString()}</p>
             <p>Best regards,<br>The DirectPayDr Team</p>
@@ -140,19 +152,6 @@ export async function testMailgunConfiguration() {
 
     // Create a new transporter for testing to ensure fresh connection
     const testTransporter = createTransporter()
-
-    // Log configuration for debugging (sensitive info redacted)
-    console.log("Mailgun Configuration:", {
-      host: process.env.MAILGUN_SMTP_SERVER || "smtp.mailgun.org",
-      port: Number(process.env.MAILGUN_SMTP_PORT || 587),
-      auth: {
-        user: process.env.MAILGUN_SMTP_LOGIN ? "CONFIGURED" : "MISSING",
-        pass: process.env.MAILGUN_SMTP_PASSWORD ? "CONFIGURED" : "MISSING",
-      },
-      from: process.env.EMAIL_FROM || "noreply@directpaydr.com",
-      to: testRecipient,
-    })
-
     const info = await testTransporter.sendMail(testMailOptions)
 
     // Check if we're in preview mode
@@ -162,21 +161,21 @@ export async function testMailgunConfiguration() {
       success: true,
       message: isPreview
         ? `Test email simulation successful! In production, this would be sent to: ${testRecipient}`
-        : "Test email sent successfully!",
+        : "Test email sent successfully via SMTP!",
       messageId: info.messageId,
       isPreviewMode: isPreview,
     }
   } catch (error) {
-    console.error("Error sending test email:", error)
+    console.error("Error sending test email via SMTP:", error)
     return {
       success: false,
-      message: "Failed to send email",
+      message: "Failed to send email via SMTP",
       error: error instanceof Error ? error.message : String(error),
     }
   }
 }
 
-// Alternative method using Mailgun API directly
+// Test email configuration via Mailgun API
 export async function testMailgunAPI() {
   try {
     const apiKey = process.env.MAILGUN_API_KEY
@@ -191,7 +190,19 @@ export async function testMailgunAPI() {
       }
     }
 
-    const formData = new FormData()
+    // Log configuration for debugging (sensitive info redacted)
+    console.log("Mailgun API Configuration:", {
+      apiKey: apiKey ? "CONFIGURED" : "MISSING",
+      domain,
+      to: testRecipient,
+    })
+
+    // Use fetch with proper error handling
+    const url = `https://api.mailgun.net/v3/${domain}/messages`
+    const auth = Buffer.from(`api:${apiKey}`).toString("base64")
+
+    // Create form data
+    const formData = new URLSearchParams()
     formData.append("from", `DirectPayDr <mailgun@${domain}>`)
     formData.append("to", testRecipient)
     formData.append("subject", "DirectPayDr Test Email via Mailgun API")
@@ -213,28 +224,49 @@ export async function testMailgunAPI() {
     `,
     )
 
-    const response = await fetch(`https://api.mailgun.net/v3/${domain}/messages`, {
+    console.log("Sending request to Mailgun API:", url)
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Basic ${Buffer.from(`api:${apiKey}`).toString("base64")}`,
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: formData,
+      body: formData.toString(),
     })
 
-    const data = await response.json()
+    console.log("Mailgun API response status:", response.status, response.statusText)
 
-    if (response.ok) {
-      return {
-        success: true,
-        message: "Test email sent successfully via Mailgun API!",
-        messageId: data.id,
+    // Check if response is ok
+    if (!response.ok) {
+      const text = await response.text()
+      console.error("Mailgun API error response:", text)
+
+      let errorMessage = `HTTP error ${response.status}: ${response.statusText}`
+      try {
+        // Try to parse as JSON, but handle text responses too
+        const errorData = JSON.parse(text)
+        errorMessage = errorData.message || errorMessage
+      } catch (e) {
+        // If it's not JSON, use the text directly
+        errorMessage = text || errorMessage
       }
-    } else {
+
       return {
         success: false,
         message: "Failed to send email via Mailgun API",
-        error: data.message || "Unknown error",
+        error: errorMessage,
       }
+    }
+
+    // Parse the JSON response
+    const data = await response.json()
+    console.log("Mailgun API success response:", data)
+
+    return {
+      success: true,
+      message: "Test email sent successfully via Mailgun API!",
+      messageId: data.id,
     }
   } catch (error) {
     console.error("Error sending test email via API:", error)

@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-// This middleware is now simplified since we're handling auth client-side
 export function middleware(request: NextRequest) {
-  // Simply allow all requests to pass through
+  // Skip middleware for API routes to prevent interference with NextAuth
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.next()
+  }
+
+  // Simply allow all other requests to pass through
   return NextResponse.next()
 }
 
@@ -11,10 +15,11 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 }

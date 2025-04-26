@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 
 type User = {
@@ -17,72 +17,45 @@ type AuthStatus = "loading" | "authenticated" | "unauthenticated"
 type AuthContextType = {
   user: User | null
   status: AuthStatus
-  signIn: (email: string, password: string) => Promise<boolean>
-  signOut: () => void
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  status: "loading",
+})
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { data: session, status: nextAuthStatus } = useSession()
+  // Handle the case when useSession might return undefined
+  const sessionResult = useSession()
   const [user, setUser] = useState<User | null>(null)
   const [status, setStatus] = useState<AuthStatus>("loading")
 
-  // Sync with NextAuth session
   useEffect(() => {
-    if (nextAuthStatus === "authenticated" && session?.user) {
-      setUser({
-        id: session.user.id || "1",
-        name: session.user.name,
-        email: session.user.email || "",
-        role: (session.user.role as string) || null,
-        image: session.user.image,
-      })
-      setStatus("authenticated")
-    } else if (nextAuthStatus === "unauthenticated") {
-      // Fall back to localStorage if no NextAuth session
-      const storedUser = localStorage.getItem("user")
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser))
-          setStatus("authenticated")
-        } catch (error) {
-          console.error("Failed to parse stored user:", error)
-          setStatus("unauthenticated")
-        }
-      } else {
+    // Check if sessionResult is defined before destructuring
+    if (sessionResult) {
+      const { data: session, status: nextAuthStatus } = sessionResult
+
+      if (nextAuthStatus === "authenticated" && session?.user) {
+        setUser({
+          id: session.user.id || "1",
+          name: session.user.name,
+          email: session.user.email || "",
+          role: (session.user.role as string) || null,
+          image: session.user.image,
+        })
+        setStatus("authenticated")
+      } else if (nextAuthStatus === "unauthenticated") {
+        setUser(null)
         setStatus("unauthenticated")
       }
+    } else {
+      // Handle the case when sessionResult is undefined
+      console.warn("useSession returned undefined. Check your SessionProvider setup.")
+      setStatus("unauthenticated")
     }
-  }, [session, nextAuthStatus])
+  }, [sessionResult])
 
-  // Mock sign in function - replace with real authentication later
-  const signIn = async (email: string, password: string) => {
-    // For demo purposes only - replace with real authentication
-    if (email === "test@example.com" && password === "password") {
-      const mockUser: User = {
-        id: "1",
-        name: "Test User",
-        email: "test@example.com",
-        role: "patient",
-      }
-
-      setUser(mockUser)
-      setStatus("authenticated")
-      localStorage.setItem("user", JSON.stringify(mockUser))
-      return true
-    }
-
-    return false
-  }
-
-  const signOut = () => {
-    setUser(null)
-    setStatus("unauthenticated")
-    localStorage.removeItem("user")
-  }
-
-  return <AuthContext.Provider value={{ user, status, signIn, signOut }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, status }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
