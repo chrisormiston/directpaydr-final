@@ -12,10 +12,10 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-r from-blue-600 to-blue-700 py-20 md:py-28">
+      <section className="bg-gradient-to-r from-blue-600 to-blue-700 pt-8 pb-8 md:pt-12 md:pb-12">
         <div className="container mx-auto px-4">
-          <div className="grid gap-8 md:grid-cols-2 items-center">
-            <div className="text-white space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 items-center">
+            <div className="text-white space-y-4">
               <Badge className="bg-blue-500 hover:bg-blue-500 text-white">Save up to 50% on medical procedures</Badge>
               <h1 className="text-4xl md:text-5xl font-bold leading-tight">Quality Healthcare at Transparent Prices</h1>
               <p className="text-xl opacity-90">
@@ -55,59 +55,59 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Search Box */}
-        <div className="container mx-auto px-4 relative">
-          <div className="absolute left-0 right-0 -bottom-16 z-10">
-            <div className="bg-white rounded-xl shadow-xl p-6">
-              <Tabs defaultValue="procedure" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="procedure">Find by Procedure</TabsTrigger>
-                  <TabsTrigger value="location">Find by Location</TabsTrigger>
-                </TabsList>
-                <TabsContent value="procedure">
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                        <Input
-                          placeholder="Search procedures (MRI, X-Ray, Blood Test...)"
-                          className="pl-10 py-6 text-base"
-                        />
-                      </div>
+      {/* Search Box - Now positioned below the hero section */}
+      <section className="bg-gradient-to-r from-blue-600 to-blue-700 pb-8 md:pb-12">
+        <div className="container mx-auto px-4">
+          <div className="bg-white rounded-xl shadow-xl p-6">
+            <Tabs defaultValue="procedure" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="procedure">Find by Procedure</TabsTrigger>
+                <TabsTrigger value="location">Find by Location</TabsTrigger>
+              </TabsList>
+              <TabsContent value="procedure">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                      <Input
+                        placeholder="Search procedures (MRI, X-Ray, Blood Test...)"
+                        className="pl-10 py-6 text-base"
+                      />
                     </div>
-                    <div>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                        <Input placeholder="Zip Code or City" className="pl-10 py-6 text-base" />
-                      </div>
-                    </div>
-                    <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-white py-6">
-                      Search
-                    </Button>
                   </div>
-                </TabsContent>
-                <TabsContent value="location">
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1">
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                        <Input placeholder="Enter Zip Code or City" className="pl-10 py-6 text-base" />
-                      </div>
+                  <div>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                      <Input placeholder="Zip Code or City" className="pl-10 py-6 text-base" />
                     </div>
-                    <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-white py-6">
-                      Find Providers
-                    </Button>
                   </div>
-                </TabsContent>
-              </Tabs>
-            </div>
+                  <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-white py-6">
+                    Search
+                  </Button>
+                </div>
+              </TabsContent>
+              <TabsContent value="location">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                      <Input placeholder="Enter Zip Code or City" className="pl-10 py-6 text-base" />
+                    </div>
+                  </div>
+                  <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-white py-6">
+                    Find Providers
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </section>
 
       {/* Trust Indicators Section */}
-      <section className="pt-32 pb-16 bg-gray-50">
+      <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900">Trusted Healthcare Marketplace</h2>

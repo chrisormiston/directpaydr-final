@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function ArizonaPage() {
   const [activeTab, setActiveTab] = useState("overview")
@@ -12,7 +13,7 @@ export default function ArizonaPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-white">
+      <section className="w-full py-8 md:py-12 lg:py-16 bg-white">
         <div className="container px-4 md:px-6">
           <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
             <div className="flex flex-col justify-center space-y-4">
@@ -36,13 +37,13 @@ export default function ArizonaPage() {
             </div>
             <div className="flex items-center justify-center">
               <div className="relative h-[300px] w-full overflow-hidden rounded-xl lg:h-[400px]">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center">
-                  <img
-                    alt="Arizona healthcare"
-                    className="mx-auto h-auto max-w-[80%]"
-                    src="/arizona.jpg"
-                  />
-                </div>
+                <Image
+                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/arizona-NTouq1hXvnSofGuP23fLVhrtFCNkcn.jpeg"
+                  alt="Arizona landscape with Phoenix skyline, desert, and cacti"
+                  fill
+                  className="object-cover"
+                  priority
+                />
               </div>
             </div>
           </div>
@@ -50,7 +51,7 @@ export default function ArizonaPage() {
       </section>
 
       {/* Main Content */}
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-50">
+      <section className="w-full py-6 md:py-10 lg:py-12 bg-gray-50">
         <div className="container px-4 md:px-6">
           <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
@@ -65,7 +66,7 @@ export default function ArizonaPage() {
             </TabsList>
 
             {/* Overview Tab */}
-            <TabsContent value="overview" className="pt-6">
+            <TabsContent value="overview" className="pt-4">
               <div className="grid gap-6 lg:grid-cols-2 lg:gap-12">
                 <div className="space-y-4">
                   <h2 className="text-3xl font-bold tracking-tighter">Healthcare in Arizona</h2>
@@ -135,7 +136,7 @@ export default function ArizonaPage() {
             </TabsContent>
 
             {/* Procedures Tab */}
-            <TabsContent value="procedures" className="pt-6">
+            <TabsContent value="procedures" className="pt-4">
               <div className="space-y-6">
                 <div className="flex flex-col gap-2">
                   <h2 className="text-3xl font-bold tracking-tighter">Popular Procedures in Arizona</h2>
@@ -292,7 +293,7 @@ export default function ArizonaPage() {
             </TabsContent>
 
             {/* Providers Tab */}
-            <TabsContent value="providers" className="pt-6">
+            <TabsContent value="providers" className="pt-4">
               <div className="space-y-6">
                 <div className="flex flex-col gap-2">
                   <h2 className="text-3xl font-bold tracking-tighter">Featured Arizona Providers</h2>
@@ -453,7 +454,7 @@ export default function ArizonaPage() {
             </TabsContent>
 
             {/* Cities Tab */}
-            <TabsContent value="cities" className="pt-6">
+            <TabsContent value="cities" className="pt-4">
               <div className="space-y-6">
                 <div className="flex flex-col gap-2">
                   <h2 className="text-3xl font-bold tracking-tighter">Arizona Cities</h2>
@@ -673,7 +674,7 @@ export default function ArizonaPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-white">
+      <section className="w-full py-8 md:py-12 lg:py-16 bg-white">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
