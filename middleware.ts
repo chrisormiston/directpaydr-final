@@ -3,69 +3,52 @@ import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request })
+  const { pathname } = request.nextUrl
+
+  // Get the token
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  })
+
   const isAuthenticated = !!token
-  const isAuthPage =
-    request.nextUrl.pathname.startsWith("/auth/signin") ||
-    request.nextUrl.pathname.startsWith("/auth/signup") ||
-    request.nextUrl.pathname.startsWith("/auth/forgot-password")
 
-  // Redirect authenticated users away from auth pages
+  // Define auth pages that should redirect to dashboard if already authenticated
+  const authPages = ["/auth/signin", "/auth/signup", "/auth/forgot-password", "/auth/reset-password"]
+
+  const isAuthPage = authPages.some((page) => pathname.startsWith(page))
+
+  // If user is authenticated and trying to access an auth page, redirect to dashboard
   if (isAuthenticated && isAuthPage) {
-    // Redirect based on user role
-    if (token.role === "patient") {
-      return NextResponse.redirect(new URL("/dashboard/patient", request.url))
-    } else if (token.role === "provider") {
-      return NextResponse.redirect(new URL("/dashboard/provider", request.url))
-    } else if (token.role === "employer") {
-      return NextResponse.redirect(new URL("/dashboard/employer", request.url))
-    } else if (token.role === "admin") {
-      return NextResponse.redirect(new URL("/dashboard/admin", request.url))
-    } else {
-      return NextResponse.redirect(new URL("/", request.url))
-    }
+    const role = token.role as string
+    const dashboardPath = `/dashboard/${role}`
+    return NextResponse.redirect(new URL(dashboardPath, request.url))
   }
 
-  // Protect dashboard routes
-  if (request.nextUrl.pathname.startsWith("/dashboard")) {
-    if (!isAuthenticated) {
-      return NextResponse.redirect(new URL("/auth/signin", request.url))
-    }
-
-    // Check role-specific access
-    if (
-      request.nextUrl.pathname.startsWith("/dashboard/patient") &&
-      token?.role !== "patient" &&
-      token?.role !== "admin"
-    ) {
-      return NextResponse.redirect(new URL("/auth/signin", request.url))
-    }
-
-    if (
-      request.nextUrl.pathname.startsWith("/dashboard/provider") &&
-      token?.role !== "provider" &&
-      token?.role !== "admin"
-    ) {
-      return NextResponse.redirect(new URL("/auth/signin", request.url))
-    }
-
-    if (
-      request.nextUrl.pathname.startsWith("/dashboard/employer") &&
-      token?.role !== "employer" &&
-      token?.role !== "admin"
-    ) {
-      return NextResponse.redirect(new URL("/auth/signin", request.url))
-    }
-
-    if (request.nextUrl.pathname.startsWith("/dashboard/admin") && token?.role !== "admin") {
-      return NextResponse.redirect(new URL("/auth/signin", request.url))
-    }
+  // If user is trying to access dashboard without authentication, redirect to login
+  if (pathname.startsWith("/dashboard") && !isAuthenticated) {
+    return NextResponse.redirect(new URL("/auth/signin", request.url))
   }
 
-  // Protect admin routes
-  if (request.nextUrl.pathname.startsWith("/admin")) {
-    if (!isAuthenticated || token?.role !== "admin") {
-      return NextResponse.redirect(new URL("/auth/signin", request.url))
+  // Role-based access control for dashboard
+  if (pathname.startsWith("/dashboard") && isAuthenticated) {
+    const role = token.role as string
+
+    // Check if user is trying to access a dashboard they don't have permission for
+    if (pathname.startsWith("/dashboard/patient") && role !== "patient" && role !== "admin") {
+      return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
+    }
+
+    if (pathname.startsWith("/dashboard/provider") && role !== "provider" && role !== "admin") {
+      return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
+    }
+
+    if (pathname.startsWith("/dashboard/employer") && role !== "employer" && role !== "admin") {
+      return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
+    }
+
+    if (pathname.startsWith("/dashboard/admin") && role !== "admin") {
+      return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
     }
   }
 
@@ -73,5 +56,14 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/auth/signin", "/auth/signup/:path*", "/auth/forgot-password"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public (public files)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|public).*)",
+  ],
 }

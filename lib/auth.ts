@@ -35,6 +35,7 @@ export const authOptions: NextAuthOptions = {
 
           // Get user metadata to determine role
           const role = authData.user.user_metadata?.role || "patient"
+          console.log("User role from metadata:", role)
 
           // For patients, get additional data from patients table
           if (role === "patient") {
@@ -44,18 +45,25 @@ export const authOptions: NextAuthOptions = {
               .eq("id", authData.user.id)
               .single()
 
-            if (patientError || !patient) {
+            if (patientError) {
               console.error("Patient record not found:", patientError)
               return null
             }
 
+            if (!patient) {
+              console.error("No patient record found for user ID:", authData.user.id)
+              return null
+            }
+
+            console.log("Patient data retrieved:", patient.first_name, patient.last_name)
+
             // Return user object that will be saved in the JWT
             return {
               id: authData.user.id,
-              email: authData.user.email,
+              email: authData.user.email || patient.email,
               name: `${patient.first_name} ${patient.last_name}`,
               role: "patient",
-              emailVerified: authData.user.email_confirmed_at ? new Date(authData.user.email_confirmed_at) : null,
+              emailVerified: authData.user.email_confirmed_at ? true : false,
             }
           } else {
             // For other roles, check the users table
