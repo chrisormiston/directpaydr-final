@@ -110,7 +110,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       // Initial sign in
       if (user) {
         console.log("JWT callback - setting token from user:", user)
@@ -125,6 +125,14 @@ export const authOptions: NextAuthOptions = {
           exp: token.exp ? new Date(token.exp * 1000).toISOString() : "unknown",
         })
       }
+
+      // CRITICAL FIX: Handle session updates
+      if (trigger === "update" && session) {
+        console.log("JWT update triggered with session:", session)
+        // Update the token with the new session data
+        token = { ...token, ...session.user }
+      }
+
       return token
     },
     async session({ session, token }) {
@@ -135,8 +143,9 @@ export const authOptions: NextAuthOptions = {
       })
 
       if (token && session.user) {
+        // CRITICAL FIX: Ensure role is always set
         session.user.id = token.id as string
-        session.user.role = token.role as string
+        session.user.role = (token.role as string) || "patient" // Default to patient if role is missing
         session.user.emailVerified = token.emailVerified as boolean
 
         console.log("Session updated with user data:", {
@@ -158,5 +167,17 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  debug: true, // Enable debug mode to see more detailed logs
+  // CRITICAL FIX: Ensure cookies are properly configured
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
+  debug: process.env.NODE_ENV === "development",
 }
