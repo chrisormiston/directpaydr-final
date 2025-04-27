@@ -9,7 +9,19 @@ export async function POST(request: Request) {
     const formData = await request.json()
 
     // Extract patient data
-    const { email, password, firstName, lastName, dateOfBirth, phone, address, city, state, zipCode } = formData
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      dateOfBirth,
+      phone,
+      addressLine1, // Use addressLine1 instead of address
+      addressLine2, // Include addressLine2
+      city,
+      state,
+      zipCode,
+    } = formData
 
     console.log("Creating patient account for:", email)
 
@@ -50,7 +62,7 @@ export async function POST(request: Request) {
       console.log("Email confirmed for testing purposes")
     }
 
-    // Create patient record
+    // Create patient record with correct address fields
     const { data: patient, error: patientError } = await supabase
       .from("patients")
       .insert([
@@ -61,7 +73,8 @@ export async function POST(request: Request) {
           last_name: lastName,
           date_of_birth: dateOfBirth,
           phone,
-          address,
+          address_line1: addressLine1, // Use address_line1 instead of address
+          address_line2: addressLine2 || null, // Include address_line2
           city,
           state,
           zip_code: zipCode,
