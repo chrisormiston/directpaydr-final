@@ -4,117 +4,82 @@ import { cookies } from "next/headers"
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const {
-      firstName,
-      lastName,
-      email,
-      password,
-      phone,
-      dateOfBirth,
-      addressLine1,
-      addressLine2,
-      city,
-      state,
-      zipCode,
-      insuranceProvider,
-      insurancePolicyNumber,
-    } = body
-
-    console.log("Received patient signup request for:", email)
-
-    // Create Supabase client
     const cookieStore = cookies()
     const supabase = createClient(cookieStore)
+    const formData = await request.json()
 
-    // 1. First, create the user in Supabase Auth
+    // Extract patient data
+    const { email, password, firstName, lastName, dateOfBirth, phone, address, city, state, zipCode } = formData
+
+    console.log("Creating patient account for:", email)
+
+    // Create user in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
+          role: "patient",
           first_name: firstName,
           last_name: lastName,
-          phone: phone,
-          role: "patient",
         },
+        // Set emailRedirectTo for verification
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-success`,
       },
     })
 
     if (authError) {
-      console.error("Error creating Supabase auth user:", authError)
-      return NextResponse.json(
-        {
-          message: `Error creating user: ${authError.message}`,
-          details: authError,
-        },
-        { status: 500 },
-      )
+      console.error("Error creating auth user:", authError)
+      return NextResponse.json({ error: authError.message }, { status: 400 })
     }
 
     if (!authData.user) {
-      console.error("No user data returned after auth signup")
-      return NextResponse.json({ message: "Error creating user: No data returned" }, { status: 500 })
+      console.error("No user returned from auth signup")
+      return NextResponse.json({ error: "Failed to create user" }, { status: 400 })
     }
 
-    const userId = authData.user.id
-    console.log("Auth user created with ID:", userId)
+    console.log("Auth user created with ID:", authData.user.id)
 
-    // 2. Create the patient record in the patients table
-    console.log("Creating patient record...")
+    // Set email as verified for testing purposes (remove in production)
+    const { error: updateError } = await supabase.auth.admin.updateUserById(authData.user.id, { email_confirm: true })
 
-    // Create patient record with the auth user ID
-    const patientData = {
-      id: userId, // Use the auth user ID
-      first_name: firstName,
-      last_name: lastName,
-      email: email, // Store email in the patients table
-      date_of_birth: dateOfBirth,
-      phone,
-      address_line1: addressLine1,
-      address_line2: addressLine2 || null, // Optional field
-      city,
-      state,
-      zip_code: zipCode,
-      insurance_provider: insuranceProvider || null,
-      insurance_policy_number: insurancePolicyNumber || null,
+    if (updateError) {
+      console.error("Error confirming email:", updateError)
+      // Continue anyway, this is just for testing
+    } else {
+      console.log("Email confirmed for testing purposes")
     }
 
-    const { error: patientError } = await supabase.from("patients").insert(patientData)
+    // Create patient record
+    const { data: patient, error: patientError } = await supabase
+      .from("patients")
+      .insert([
+        {
+          id: authData.user.id,
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          date_of_birth: dateOfBirth,
+          phone,
+          address,
+          city,
+          state,
+          zip_code: zipCode,
+          created_at: new Date().toISOString(),
+        },
+      ])
+      .select()
 
     if (patientError) {
       console.error("Error creating patient record:", patientError)
-      // Try to delete the auth user if possible
-      try {
-        await supabase.auth.admin.deleteUser(userId)
-      } catch (deleteError) {
-        console.error("Error cleaning up after patient creation failed:", deleteError)
-      }
-
-      return NextResponse.json(
-        {
-          message: `Error creating patient record: ${patientError.message}`,
-          details: patientError,
-        },
-        { status: 500 },
-      )
+      return NextResponse.json({ error: "Error creating patient record: " + patientError.message }, { status: 400 })
     }
 
-    return NextResponse.json(
-      {
-        message: "Patient account created successfully",
-        userId,
-      },
-      { status: 201 },
-    )
-  } catch (error: any) {
+    console.log("Patient record created successfully")
+
+    return NextResponse.json({ success: true, user: authData.user, patient: patient[0] })
+  } catch (error) {
     console.error("Signup error:", error)
-    return NextResponse.json(
-      {
-        message: `Internal server error: ${error.message}`,
-        stack: error.stack,
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
   }
 }
