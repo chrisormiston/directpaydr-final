@@ -24,21 +24,11 @@ export async function middleware(request: NextRequest) {
     })
   }
 
-  // CRITICAL FIX: Skip middleware for public assets and API routes
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/") ||
-    pathname.includes(".") // Skip files with extensions (images, etc.)
-  ) {
-    return NextResponse.next()
-  }
-
-  // CRITICAL FIX: Check if we're in a server-side rendering context
-  // NextAuth sets a special header during SSR
-  const isSSR = request.headers.get("x-middleware-ssr") === "1"
-  if (isSSR) {
-    console.log("SSR context detected, skipping middleware auth check")
-    return NextResponse.next()
+  // Check if the token is expired
+  const isTokenExpired = token?.exp ? Date.now() >= token.exp * 1000 : false
+  if (token && isTokenExpired) {
+    console.log("Token is expired, redirecting to login")
+    return NextResponse.redirect(new URL("/auth/signin", request.url))
   }
 
   // If accessing dashboard without authentication, redirect to login
@@ -56,22 +46,18 @@ export async function middleware(request: NextRequest) {
 
   // Role-based access control for dashboard
   if (pathname.startsWith("/dashboard") && token) {
-    const role = (token.role as string) || "patient" // Default to patient if role is not set
+    const role = token.role as string
     console.log("Checking dashboard access for role:", role)
 
-    // CRITICAL FIX: Special handling for patient dashboard
-    if (pathname.startsWith("/dashboard/patient")) {
-      // If user is a patient or admin, allow access to patient dashboard
-      if (role === "patient" || role === "admin") {
-        console.log("Allowing access to patient dashboard for role:", role)
-        return NextResponse.next()
-      } else {
-        console.log("Redirecting - not a patient or admin")
-        return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
-      }
+    // Handle the case where role is undefined or not set
+    if (!role) {
+      console.log("Role is undefined, defaulting to patient")
+      // Default to patient if role is not set
+      return NextResponse.next()
     }
 
     // Only redirect if trying to access a dashboard for a different role
+    // Don't redirect patients from their own dashboard
     if (pathname.startsWith("/dashboard/provider") && role !== "provider" && role !== "admin") {
       console.log("Redirecting - wrong dashboard for role", role)
       return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
@@ -87,8 +73,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
     }
 
-    // Special case for root dashboard
-    if ((pathname === "/dashboard" || pathname === "/dashboard/") && role) {
+    // Special case for patient dashboard
+    if (pathname === "/dashboard" || pathname === "/dashboard/") {
       console.log("Redirecting from root dashboard to role-specific dashboard")
       return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
     }
@@ -99,20 +85,7 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-// CRITICAL FIX: Update the matcher to be more specific and exclude API routes
+// Update the matcher to be more specific about which routes to apply middleware to
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
-    "/dashboard/:path*",
-    "/auth/signin",
-    "/auth/signup/:path*",
-  ],
+  matcher: ["/dashboard/:path*", "/auth/signin", "/auth/signup/:path*"],
 }
