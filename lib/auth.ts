@@ -42,6 +42,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           console.log("User authenticated successfully:", authData.user.id)
+          console.log("User metadata:", authData.user.user_metadata)
 
           // Get user metadata to determine role
           const role = authData.user.user_metadata?.role || "patient"
@@ -58,6 +59,8 @@ export const authOptions: NextAuthOptions = {
             if (patientError) {
               console.error("Error fetching patient data:", patientError)
               // If we can't find the patient record, we'll still allow login with basic info
+            } else {
+              console.log("Patient data retrieved:", patient)
             }
 
             // Get patient name from either the patient record or user metadata
@@ -86,6 +89,8 @@ export const authOptions: NextAuthOptions = {
             if (userError) {
               console.error("Error fetching user data:", userError)
               // If we can't find the user record, we'll still allow login with basic info
+            } else {
+              console.log("User data retrieved:", user)
             }
 
             // Return user object that will be saved in the JWT
@@ -108,17 +113,37 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       // Initial sign in
       if (user) {
+        console.log("JWT callback - setting token from user:", user)
         token.id = user.id
         token.role = user.role
         token.emailVerified = user.emailVerified
+      } else {
+        console.log("JWT callback - existing token:", {
+          id: token.id,
+          email: token.email,
+          role: token.role,
+          exp: token.exp ? new Date(token.exp * 1000).toISOString() : "unknown",
+        })
       }
       return token
     },
     async session({ session, token }) {
+      console.log("Session callback - token:", {
+        id: token.id,
+        email: token.email,
+        role: token.role,
+      })
+
       if (token && session.user) {
         session.user.id = token.id as string
         session.user.role = token.role as string
         session.user.emailVerified = token.emailVerified as boolean
+
+        console.log("Session updated with user data:", {
+          id: session.user.id,
+          email: session.user.email,
+          role: session.user.role,
+        })
       }
       return session
     },
@@ -133,5 +158,5 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  debug: process.env.NODE_ENV === "development",
+  debug: true, // Enable debug mode to see more detailed logs
 }

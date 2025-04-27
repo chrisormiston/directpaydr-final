@@ -3,16 +3,9 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, User, LogOut } from "lucide-react"
+import { Menu, X, LogOut } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { useSession, signOut } from "next-auth/react"
 
 export function PatientMenu() {
@@ -45,14 +38,10 @@ export function PatientMenu() {
           ))}
         </nav>
 
-        {/* Profile Dropdown */}
-        <!-- 
-        
-        -->
+        {/* Profile dropdown was removed as requested */}
       </div>
 
       {/* Mobile Menu */}
-   
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild className="md:hidden">
           <Button variant="ghost" size="icon">
@@ -119,7 +108,6 @@ export function PatientMenu() {
           </div>
         </SheetContent>
       </Sheet>
-     
     </>
   )
 }
