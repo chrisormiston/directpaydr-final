@@ -31,11 +31,6 @@ export async function middleware(request: NextRequest) {
     const role = token.role as string
 
     // Check if user is trying to access a dashboard they don't have permission for
-    if (pathname.startsWith("/dashboard/patient") && role !== "patient" && role !== "admin") {
-      console.log("Redirecting - wrong dashboard for role", role)
-      return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
-    }
-
     if (pathname.startsWith("/dashboard/provider") && role !== "provider" && role !== "admin") {
       console.log("Redirecting - wrong dashboard for role", role)
       return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
