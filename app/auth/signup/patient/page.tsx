@@ -37,7 +37,8 @@ const patientFormSchema = z
       minDate.setFullYear(today.getFullYear() - 120) // 120 years ago
       return date <= today && date >= minDate
     }, "Please enter a valid date of birth"),
-    address: z.string().min(5, "Please enter your street address"),
+    addressLine1: z.string().min(5, "Please enter your street address"),
+    addressLine2: z.string().optional(),
     city: z.string().min(2, "Please enter your city"),
     state: z.string().min(2, "Please enter your state"),
     zipCode: z.string().min(5, "Please enter a valid ZIP code"),
@@ -71,7 +72,8 @@ export default function PatientSignUp() {
       confirmPassword: "",
       phone: "",
       dateOfBirth: "",
-      address: "",
+      addressLine1: "",
+      addressLine2: "",
       city: "",
       state: "",
       zipCode: "",
@@ -102,7 +104,8 @@ export default function PatientSignUp() {
           password: data.password,
           phone: data.phone,
           dateOfBirth: data.dateOfBirth,
-          address: data.address,
+          addressLine1: data.addressLine1,
+          addressLine2: data.addressLine2 || "",
           city: data.city,
           state: data.state,
           zipCode: data.zipCode,
@@ -234,15 +237,30 @@ export default function PatientSignUp() {
                   )}
                 />
 
-                {/* Address */}
+                {/* Address Line 1 */}
                 <FormField
                   control={form.control}
-                  name="address"
+                  name="addressLine1"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Street Address</FormLabel>
+                      <FormLabel>Address Line 1</FormLabel>
                       <FormControl>
                         <Input placeholder="123 Main St" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Address Line 2 */}
+                <FormField
+                  control={form.control}
+                  name="addressLine2"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address Line 2 (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Apt 4B" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

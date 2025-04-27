@@ -29,7 +29,8 @@ export async function POST(request: Request) {
       password,
       phone,
       dateOfBirth,
-      address,
+      addressLine1,
+      addressLine2,
       city,
       state,
       zipCode,
@@ -79,29 +80,16 @@ export async function POST(request: Request) {
     // 2. Now create the patient record in the patients table
     console.log("Creating patient record...")
 
-    // First, let's check the schema of the patients table to ensure we're using the right column names
-    const { data: patientsColumns, error: schemaError } = await supabase
-      .from("information_schema.columns")
-      .select("column_name")
-      .eq("table_name", "patients")
-      .eq("table_schema", "public")
-
-    if (schemaError) {
-      console.error("Error fetching patients schema:", schemaError)
-      // Continue anyway, we'll use our best guess at the schema
-    } else {
-      console.log("Patients table columns:", patientsColumns)
-    }
-
     // Create patient record with fields that match your schema
-    // We'll use the column names we've seen in the error messages
+    // Using address_line1 and address_line2 instead of address
     const patientData = {
       user_id: userId,
       first_name: firstName,
       last_name: lastName,
       date_of_birth: dateOfBirth,
       phone,
-      address,
+      address_line1: addressLine1,
+      address_line2: addressLine2 || null, // Optional field
       city,
       state,
       zip_code: zipCode,
