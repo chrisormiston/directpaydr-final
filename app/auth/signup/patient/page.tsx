@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 // Form schema
 const patientFormSchema = z
@@ -57,6 +58,7 @@ export default function PatientSignUp() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Initialize form
   const form = useForm<PatientFormValues>({
@@ -82,8 +84,11 @@ export default function PatientSignUp() {
   // Form submission handler
   const onSubmit = async (data: PatientFormValues) => {
     setIsSubmitting(true)
+    setError(null)
 
     try {
+      console.log("Submitting form data:", { ...data, password: "[REDACTED]" })
+
       // API call to register patient
       const response = await fetch("/api/auth/signup/patient", {
         method: "POST",
@@ -107,6 +112,7 @@ export default function PatientSignUp() {
       })
 
       const result = await response.json()
+      console.log("API response:", result)
 
       if (!response.ok) {
         throw new Error(result.message || "Failed to create account")
@@ -122,6 +128,7 @@ export default function PatientSignUp() {
       router.push("/auth/signup/success")
     } catch (error) {
       console.error("Registration error:", error)
+      setError(error instanceof Error ? error.message : "An unexpected error occurred")
       toast({
         title: "Registration failed",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -142,6 +149,13 @@ export default function PatientSignUp() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
