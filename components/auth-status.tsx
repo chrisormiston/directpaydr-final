@@ -24,11 +24,5 @@ export function AuthStatus() {
     )
   }
 
-  return (
-    <div className="flex items-center gap-2">
-      <Button asChild variant="outline" size="sm">
-        <Link href="/auth/signin">Sign in</Link>
-      </Button>
-    </div>
-  )
+  return <div className="flex items-center gap-2"></div>
 }
