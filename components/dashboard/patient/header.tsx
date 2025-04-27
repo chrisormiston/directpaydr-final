@@ -94,21 +94,35 @@ export function PatientHeader({ patientName }: PatientHeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 flex items-center gap-1">
                 <User className="h-4 w-4" />
-                <span className="hidden md:inline-block">{patientName}</span>
+                <span className="hidden md:inline-block">Logged In As: {patientName}</span>
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{patientName}</DropdownMenuLabel>
+              <DropdownMenuLabel>Logged In As: {patientName}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
+                <Link href="/dashboard/patient/account">
+                  <span>My Account</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/patient">
+                  <span>Dashboard</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
                 <Link href="/dashboard/patient/profile">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>My Profile</span>
+                  <span>Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/patient/billing">
+                  <span>Billing</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
+              <DropdownMenuItem onClick={handleSignOut} className="text-red-500 hover:text-red-600">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>
