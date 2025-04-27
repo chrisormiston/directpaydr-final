@@ -405,7 +405,7 @@ export default function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
                     <User className="mr-2 h-4 w-4" />
-                    {session.user.name || session.user.email}
+                    Logged In As: {session.user.name || session.user.email}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -413,7 +413,7 @@ export default function Header() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => router.push("/dashboard")}>Dashboard</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>Profile</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>Settings</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push("/dashboard/billing")}>Billing</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
