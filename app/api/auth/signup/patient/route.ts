@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import bcrypt from "bcryptjs"
+import { v4 as uuidv4 } from "uuid"
 
 // Helper function to hash passwords
 async function hashPassword(password: string): Promise<string> {
@@ -74,16 +75,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Error creating user: No data returned" }, { status: 500 })
     }
 
-    const userId = authData.user.id
-    console.log("Auth user created with ID:", userId)
+    const authUserId = authData.user.id
+    console.log("Auth user created with ID:", authUserId)
 
     // 2. Now create the patient record in the patients table
     console.log("Creating patient record...")
 
+    // First, let's check the schema of the patients table to ensure we're using the right column names
+    const { data: patientsColumns, error: schemaError } = await supabase
+      .from("information_schema.columns")
+      .select("column_name, table_name")
+      .eq("table_name", "patients")
+      .eq("table_schema", "public")
+
+    if (schemaError) {
+      console.error("Error fetching patients schema:", schemaError)
+    } else {
+      console.log("Patients table columns:", patientsColumns)
+    }
+
+    // Generate a UUID for the patient record if needed
+    const patientId = uuidv4()
+
     // Create patient record with fields that match your schema
-    // Using address_line1 and address_line2 instead of address
+    // Using id instead of user_id, and address_line1/address_line2 instead of address
     const patientData = {
-      user_id: userId,
+      id: patientId, // Using id as the primary key
+      auth_user_id: authUserId, // Storing the auth user ID to link the records
       first_name: firstName,
       last_name: lastName,
       date_of_birth: dateOfBirth,
@@ -103,7 +121,7 @@ export async function POST(request: Request) {
       console.error("Error creating patient record:", patientError)
       // Try to delete the auth user if possible
       try {
-        await supabase.auth.admin.deleteUser(userId)
+        await supabase.auth.admin.deleteUser(authUserId)
       } catch (deleteError) {
         console.error("Error deleting auth user after patient creation failed:", deleteError)
       }
@@ -120,7 +138,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         message: "Patient account created successfully",
-        userId,
+        patientId,
+        authUserId,
       },
       { status: 201 },
     )
