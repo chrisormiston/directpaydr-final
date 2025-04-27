@@ -1,25 +1,118 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ChevronDown, ChevronUp, Eye, EyeOff, Menu, User, Building, Stethoscope } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ChevronDown, ChevronUp, Eye, EyeOff, Menu, User, Building, Stethoscope, Loader2, LogOut } from "lucide-react"
+import { signIn, signOut, useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { AuthStatus } from "@/components/auth-status"
 
 export default function Header() {
+  const router = useRouter()
+  const { data: session, status } = useSession()
+  const { toast } = useToast()
   const [isScrolled, setIsScrolled] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
   const [isProceduresOpen, setIsProceduresOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const [loginError, setLoginError] = useState("")
+  const [rememberMe, setRememberMe] = useState(false)
 
-  if (typeof window !== "undefined") {
-    window.addEventListener("scroll", () => {
+  useEffect(() => {
+    const handleScroll = () => {
       setIsScrolled(window.scrollY > 10)
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+    }
+  }, [])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!email || !password) {
+      setLoginError("Please enter both email and password")
+      return
+    }
+
+    setIsLoggingIn(true)
+    setLoginError("")
+
+    try {
+      const result = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+        callbackUrl: "/dashboard",
+      })
+
+      if (!result?.ok) {
+        setLoginError(result?.error || "Invalid email or password")
+        setIsLoggingIn(false)
+        return
+      }
+
+      // Success - close dropdown and redirect to dashboard
+      setIsLoginOpen(false)
+      toast({
+        title: "Login successful",
+        description: "Welcome back to DirectPayDr",
+      })
+
+      // Clear form
+      setEmail("")
+      setPassword("")
+
+      // Redirect to dashboard
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Login error:", error)
+      setLoginError("An unexpected error occurred")
+    } finally {
+      setIsLoggingIn(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await signOut({ redirect: false })
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out",
     })
+    router.push("/")
+  }
+
+  const handleCreateAccount = (type: string) => {
+    setIsLoginOpen(false)
+    if (type === "patient") {
+      router.push("/auth/signup/patient")
+    } else if (type === "provider") {
+      router.push("/auth/signup/provider")
+    } else if (type === "employer") {
+      router.push("/auth/signup/employer")
+    }
   }
 
   return (
@@ -47,7 +140,7 @@ export default function Header() {
               <span className="ml-2 text-xl font-bold text-blue-600">DirectPayDr</span>
             </Link>
             <nav className="ml-10 hidden md:flex space-x-8">
-              {/* All Procedures Dropdown - Keep this new dropdown */}
+              {/* All Procedures Dropdown */}
               <div className="relative group">
                 <button className="flex items-center text-gray-700 hover:text-blue-600 font-medium">
                   All Procedures
@@ -209,12 +302,12 @@ export default function Header() {
                 </div>
               </div>
 
-              {/* Restore original "Find Care" link */}
+              {/* Find Care link */}
               <Link href="#" className="text-gray-700 hover:text-blue-600 font-medium">
                 Find Care
               </Link>
 
-              {/* Restore original "For Patients" dropdown */}
+              {/* For Patients dropdown */}
               <div className="relative group">
                 <button className="flex items-center text-gray-700 hover:text-blue-600 font-medium">
                   For Patients
@@ -259,7 +352,7 @@ export default function Header() {
                 </div>
               </div>
 
-              {/* Restore original "For Providers" dropdown */}
+              {/* For Providers dropdown */}
               <div className="relative group">
                 <button className="flex items-center text-gray-700 hover:text-blue-600 font-medium">
                   For Providers
@@ -289,125 +382,197 @@ export default function Header() {
                 </div>
               </div>
 
-              {/* Restore original "For Employers" link */}
+              {/* For Employers link */}
               <Link href="/employers" className="text-gray-700 hover:text-blue-600 font-medium">
                 For Employers
               </Link>
             </nav>
           </div>
           <div className="hidden md:flex items-center space-x-4">
-            <div className="relative">
-              <button
-                onClick={() => setIsLoginOpen(!isLoginOpen)}
-                className="flex items-center text-gray-700 hover:text-blue-600 font-medium"
-              >
-                Log In / Sign Up
-                {isLoginOpen ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />}
-              </button>
+            {status === "authenticated" && session ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                    <User className="mr-2 h-4 w-4" />
+                    {session.user.name || session.user.email}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push("/dashboard")}>Dashboard</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>Profile</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>Settings</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={() => setIsLoginOpen(!isLoginOpen)}
+                  className="flex items-center text-gray-700 hover:text-blue-600 font-medium"
+                >
+                  Log In / Sign Up
+                  {isLoginOpen ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />}
+                </button>
 
-              {isLoginOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-50">
-                  <div className="p-4">
-                    <h2 className="text-xl font-bold text-gray-800 mb-3">Welcome Back</h2>
-                    <div className="space-y-3">
-                      <div className="relative">
-                        <Input type="email" placeholder="Email" className="pr-10 h-9 text-sm" />
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-red-500">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                {isLoginOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-50">
+                    <div className="p-4">
+                      <h2 className="text-xl font-bold text-gray-800 mb-3">Welcome Back</h2>
+                      <form onSubmit={handleLogin} className="space-y-3">
+                        <div className="relative">
+                          <Input
+                            type="email"
+                            placeholder="Email"
+                            className="pr-10 h-9 text-sm"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                          />
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                              <line x1="4" y1="22" x2="4" y2="15"></line>
+                            </svg>
+                          </div>
+                        </div>
+
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Password"
+                            className="pr-10 h-9 text-sm"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500"
                           >
-                            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-                            <line x1="4" y1="22" x2="4" y2="15"></line>
-                          </svg>
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
                         </div>
-                      </div>
 
-                      <div className="relative">
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Password"
-                          className="pr-10 h-9 text-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-red-500"
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              id="remember-me"
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              checked={rememberMe}
+                              onChange={(e) => setRememberMe(e.target.checked)}
+                            />
+                            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                              Remember me
+                            </label>
+                          </div>
+                          <div className="text-right">
+                            <Link href="/auth/forgot-password" className="text-blue-600 hover:text-blue-800 text-xs">
+                              Reset password
+                            </Link>
+                          </div>
+                        </div>
+
+                        {loginError && <div className="text-red-500 text-xs">{loginError}</div>}
+
+                        <Button
+                          type="submit"
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1 h-8 text-sm rounded-full"
+                          disabled={isLoggingIn}
                         >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
+                          {isLoggingIn ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Logging in...
+                            </>
+                          ) : (
+                            "Log In"
+                          )}
+                        </Button>
+
+                        <div className="text-center text-gray-500 text-xs py-1">or</div>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full border-blue-600 text-blue-600 hover:bg-blue-50 py-1 h-8 text-sm rounded-full"
+                          onClick={() => router.push("/auth/forgot-password")}
+                        >
+                          Email Me a One-time Login Link
+                        </Button>
+                      </form>
+                    </div>
+
+                    <div className="bg-blue-50 p-4">
+                      <h3 className="text-base font-bold text-gray-800 mb-2">New to DirectPayDr?</h3>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <User className="h-4 w-4 text-gray-700 mr-2" />
+                            <span className="font-medium text-sm">Patient</span>
+                          </div>
+                          <button
+                            onClick={() => handleCreateAccount("patient")}
+                            className="text-blue-600 hover:text-blue-800 text-sm"
+                          >
+                            Create account
+                          </button>
+                        </div>
+
+                        <Separator className="my-1" />
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <Stethoscope className="h-4 w-4 text-gray-700 mr-2" />
+                            <span className="font-medium text-sm">Provider</span>
+                          </div>
+                          <button
+                            onClick={() => handleCreateAccount("provider")}
+                            className="text-blue-600 hover:text-blue-800 text-sm"
+                          >
+                            Create account
+                          </button>
+                        </div>
+
+                        <Separator className="my-1" />
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <Building className="h-4 w-4 text-gray-700 mr-2" />
+                            <span className="font-medium text-sm">Employer</span>
+                          </div>
+                          <button
+                            onClick={() => handleCreateAccount("employer")}
+                            className="text-blue-600 hover:text-blue-800 text-sm"
+                          >
+                            Request access
+                          </button>
+                        </div>
                       </div>
-
-                      <div className="text-right">
-                        <Link href="#" className="text-blue-600 hover:text-blue-800 text-xs">
-                          Reset password
-                        </Link>
-                      </div>
-
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1 h-8 text-sm rounded-full">
-                        Log In
-                      </Button>
-
-                      <div className="text-center text-gray-500 text-xs py-1">or</div>
-
-                      <Button
-                        variant="outline"
-                        className="w-full border-blue-600 text-blue-600 hover:bg-blue-50 py-1 h-8 text-sm rounded-full"
-                      >
-                        Email Me a One-time Login Link
-                      </Button>
                     </div>
                   </div>
-
-                  <div className="bg-blue-50 p-4">
-                    <h3 className="text-base font-bold text-gray-800 mb-2">New to DirectPayDr?</h3>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <User className="h-4 w-4 text-gray-700 mr-2" />
-                          <span className="font-medium text-sm">Patient</span>
-                        </div>
-                        <Link href="/signup/patient" className="text-blue-600 hover:text-blue-800 text-sm">
-                          Create account
-                        </Link>
-                      </div>
-
-                      <Separator className="my-1" />
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <Stethoscope className="h-4 w-4 text-gray-700 mr-2" />
-                          <span className="font-medium text-sm">Provider</span>
-                        </div>
-                        <Link href="#" className="text-blue-600 hover:text-blue-800 text-sm">
-                          Create account
-                        </Link>
-                      </div>
-
-                      <Separator className="my-1" />
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <Building className="h-4 w-4 text-gray-700 mr-2" />
-                          <span className="font-medium text-sm">Employer</span>
-                        </div>
-                        <Link href="#" className="text-blue-600 hover:text-blue-800 text-sm">
-                          Request access
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
+            <AuthStatus />
           </div>
           <Sheet>
             <SheetTrigger asChild>
@@ -504,10 +669,41 @@ export default function Header() {
                 </nav>
                 <div className="mt-auto border-t pt-4">
                   <div className="flex flex-col space-y-4">
-                    <Link href="#" className="text-gray-700 hover:text-blue-600 font-medium">
-                      Log In
-                    </Link>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full">Create Account</Button>
+                    {status === "authenticated" && session ? (
+                      <>
+                        <div className="text-sm text-gray-700">Welcome, {session.user.name || session.user.email}</div>
+                        <Button
+                          onClick={() => router.push("/dashboard")}
+                          className="bg-blue-600 hover:bg-blue-700 text-white w-full"
+                        >
+                          Dashboard
+                        </Button>
+                        <Button
+                          onClick={handleLogout}
+                          variant="outline"
+                          className="border-red-600 text-red-600 hover:bg-red-50 w-full"
+                        >
+                          <LogOut className="mr-2 h-4 w-4" />
+                          Log out
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          onClick={() => router.push("/auth/signin")}
+                          className="text-gray-700 hover:text-blue-600 font-medium justify-start"
+                        >
+                          Log In
+                        </Button>
+                        <Button
+                          onClick={() => router.push("/auth/signup")}
+                          className="bg-blue-600 hover:bg-blue-700 text-white w-full"
+                        >
+                          Create Account
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

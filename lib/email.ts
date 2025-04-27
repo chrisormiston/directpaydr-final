@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer"
 import formData from "form-data"
 import Mailgun from "mailgun.js"
+import { createTransport } from "nodemailer"
 
 // Email service types
 export type EmailService = "smtp" | "api"
@@ -301,4 +302,87 @@ export async function sendEmail(emailContent: EmailContent, method: EmailService
       },
     }
   }
+}
+
+// Configure email transporter
+const transporter = createTransport({
+  host: process.env.MAILGUN_SMTP_SERVER,
+  port: Number(process.env.MAILGUN_SMTP_PORT),
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: process.env.MAILGUN_SMTP_LOGIN,
+    pass: process.env.MAILGUN_SMTP_PASSWORD,
+  },
+})
+
+// Send verification email
+export async function sendVerificationEmail(email: string, token: string) {
+  const verificationUrl = `${process.env.NEXTAUTH_URL}/auth/verify-email?token=${token}`
+
+  const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to: email,
+    subject: "Verify your DirectPayDr account",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #0070f3;">Welcome to DirectPayDr!</h2>
+        <p>Thank you for signing up. Please verify your email address by clicking the button below:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verificationUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Verify Email Address</a>
+        </div>
+        <p>If you didn't create an account, you can safely ignore this email.</p>
+        <p>This link will expire in 24 hours.</p>
+        <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;" />
+        <p style="color: #666; font-size: 14px;">DirectPayDr - Transparent Healthcare Pricing</p>
+      </div>
+    `,
+  }
+
+  return transporter.sendMail(mailOptions)
+}
+
+// Send password reset email
+export async function sendPasswordResetEmail(email: string, token: string) {
+  const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${token}`
+
+  const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to: email,
+    subject: "Reset your DirectPayDr password",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #0070f3;">Reset Your Password</h2>
+        <p>You requested a password reset. Click the button below to create a new password:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a>
+        </div>
+        <p>If you didn't request a password reset, you can safely ignore this email.</p>
+        <p>This link will expire in 1 hour.</p>
+        <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;" />
+        <p style="color: #666; font-size: 14px;">DirectPayDr - Transparent Healthcare Pricing</p>
+      </div>
+    `,
+  }
+
+  return transporter.sendMail(mailOptions)
+}
+
+// Send test email
+export async function sendTestEmail(to: string) {
+  const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to,
+    subject: "Test Email from DirectPayDr",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #0070f3;">Test Email</h2>
+        <p>This is a test email from DirectPayDr.</p>
+        <p>If you received this email, your email configuration is working correctly.</p>
+        <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;" />
+        <p style="color: #666; font-size: 14px;">DirectPayDr - Transparent Healthcare Pricing</p>
+      </div>
+    `,
+  }
+
+  return transporter.sendMail(mailOptions)
 }
