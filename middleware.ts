@@ -30,7 +30,8 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/dashboard") && token) {
     const role = token.role as string
 
-    // Check if user is trying to access a dashboard they don't have permission for
+    // Only redirect if trying to access a dashboard for a different role
+    // Don't redirect patients from their own dashboard
     if (pathname.startsWith("/dashboard/provider") && role !== "provider" && role !== "admin") {
       console.log("Redirecting - wrong dashboard for role", role)
       return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
@@ -47,9 +48,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Allow all other requests to proceed
   return NextResponse.next()
 }
 
+// Update the matcher to be more specific about which routes to apply middleware to
 export const config = {
   matcher: ["/dashboard/:path*", "/auth/signin", "/auth/signup/:path*"],
 }

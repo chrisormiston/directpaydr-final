@@ -46,44 +46,13 @@ export function PatientMenu() {
         </nav>
 
         {/* Profile Dropdown */}
-        <div className="flex items-center ml-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="border-2 border-blue-500 rounded-full px-4 py-2 flex items-center gap-2"
-              >
-                <span className="text-gray-900">Signed in as</span>
-                <User className="h-5 w-5 text-blue-500" />
-                <span className="text-blue-500 font-medium">{userName}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <div className="px-4 py-2 font-medium text-lg">My Account</div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/patient">Dashboard</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/patient/profile">Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/patient/billing">Billing</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-500 focus:text-red-500 cursor-pointer"
-                onClick={() => signOut({ callbackUrl: "/" })}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <!-- 
+        
+        -->
       </div>
 
       {/* Mobile Menu */}
+   
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild className="md:hidden">
           <Button variant="ghost" size="icon">
@@ -150,6 +119,7 @@ export function PatientMenu() {
           </div>
         </SheetContent>
       </Sheet>
+     
     </>
   )
 }
