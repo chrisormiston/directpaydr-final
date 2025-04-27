@@ -3,23 +3,15 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, User, LogOut } from "lucide-react"
+import { Menu, X } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { useSession, signOut } from "next-auth/react"
+import { useSession } from "next-auth/react"
 
 export function PatientMenu() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const { data: session } = useSession()
-  const userName = session?.user?.name || "Patient"
 
   const menuItems = [
     { name: "My Providers", href: "/dashboard/patient/providers" },
@@ -31,7 +23,7 @@ export function PatientMenu() {
     <>
       {/* Desktop Menu */}
       <div className="flex items-center justify-between w-full">
-        <nav className="hidden md:flex items-center space-x-8">
+        <nav className="flex items-center space-x-8">
           {menuItems.map((item) => (
             <Link
               key={item.name}
@@ -44,43 +36,6 @@ export function PatientMenu() {
             </Link>
           ))}
         </nav>
-
-        {/* Profile Dropdown */}
-        <div className="flex items-center ml-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="border-2 border-blue-500 rounded-full px-4 py-2 flex items-center gap-2"
-              >
-                <span className="text-gray-900">Signed in as</span>
-                <User className="h-5 w-5 text-blue-500" />
-                <span className="text-blue-500 font-medium">{userName}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <div className="px-4 py-2 font-medium text-lg">My Account</div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/patient">Dashboard</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/patient/profile">Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/patient/billing">Billing</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-500 focus:text-red-500 cursor-pointer"
-                onClick={() => signOut({ callbackUrl: "/" })}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </div>
 
       {/* Mobile Menu */}
@@ -113,39 +68,6 @@ export function PatientMenu() {
                   {item.name}
                 </Link>
               ))}
-              <div className="pt-4 border-t">
-                <Link
-                  href="/dashboard/patient"
-                  className="text-base font-medium text-gray-700 hover:text-blue-600"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Dashboard
-                </Link>
-              </div>
-              <Link
-                href="/dashboard/patient/profile"
-                className="text-base font-medium text-gray-700 hover:text-blue-600"
-                onClick={() => setIsOpen(false)}
-              >
-                Profile
-              </Link>
-              <Link
-                href="/dashboard/patient/billing"
-                className="text-base font-medium text-gray-700 hover:text-blue-600"
-                onClick={() => setIsOpen(false)}
-              >
-                Billing
-              </Link>
-              <button
-                onClick={() => {
-                  setIsOpen(false)
-                  signOut({ callbackUrl: "/" })
-                }}
-                className="flex items-center text-base font-medium text-red-500 hover:text-red-600"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </button>
             </nav>
           </div>
         </SheetContent>

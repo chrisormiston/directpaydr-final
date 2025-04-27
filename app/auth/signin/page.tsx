@@ -43,7 +43,7 @@ export default function SignIn() {
         return
       }
 
-      // Redirect to dashboard
+      // Redirect to patient dashboard
       router.push("/dashboard/patient")
       router.refresh()
     } catch (error) {
