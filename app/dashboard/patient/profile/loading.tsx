@@ -1,71 +1,89 @@
 import { Skeleton } from "@/components/ui/skeleton"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
 export default function PatientProfileLoading() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <Skeleton className="h-10 w-40 mb-2" />
-        <Skeleton className="h-5 w-64" />
+    <div className="container py-8">
+      <div className="mb-8">
+        <Skeleton className="h-10 w-[150px]" />
+        <Skeleton className="mt-2 h-4 w-[300px]" />
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="bg-blue-600 px-6 py-4">
-          <div className="flex items-center">
-            <Skeleton className="h-14 w-14 rounded-full" />
-            <div className="ml-4">
-              <Skeleton className="h-6 w-48 bg-blue-300 mb-1" />
-              <Skeleton className="h-4 w-32 bg-blue-300" />
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Personal Information */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <Skeleton className="h-6 w-[180px]" />
+              <Skeleton className="mt-1 h-4 w-[150px]" />
             </div>
-          </div>
-        </div>
-
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-16" />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i}>
-                <Skeleton className="h-4 w-24 mb-1" />
-                <Skeleton className="h-5 w-48" />
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8">
-            <div className="flex justify-between items-center mb-4">
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-16" />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton className="h-9 w-[60px]" />
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              {[...Array(5)].map((_, i) => (
                 <div key={i}>
-                  <Skeleton className="h-4 w-24 mb-1" />
-                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-4 w-[100px]" />
+                  <Skeleton className="mt-1 h-5 w-[150px]" />
                 </div>
               ))}
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="mt-8">
-            <div className="flex justify-between items-center mb-4">
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-16" />
+        {/* Address Information */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <Skeleton className="h-6 w-[180px]" />
+              <Skeleton className="mt-1 h-4 w-[150px]" />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1, 2].map((i) => (
+            <Skeleton className="h-9 w-[60px]" />
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div>
+              <Skeleton className="h-4 w-[100px]" />
+              <Skeleton className="mt-1 h-5 w-full" />
+            </div>
+            <div>
+              <Skeleton className="h-4 w-[100px]" />
+              <Skeleton className="mt-1 h-5 w-full" />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              {[...Array(3)].map((_, i) => (
                 <div key={i}>
-                  <Skeleton className="h-4 w-24 mb-1" />
-                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-4 w-[60px]" />
+                  <Skeleton className="mt-1 h-5 w-full" />
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+
+        {/* Insurance Information */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <Skeleton className="h-6 w-[180px]" />
+              <Skeleton className="mt-1 h-4 w-[150px]" />
+            </div>
+            <Skeleton className="h-9 w-[60px]" />
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div>
+              <Skeleton className="h-4 w-[120px]" />
+              <Skeleton className="mt-1 h-5 w-[200px]" />
+            </div>
+            <div>
+              <Skeleton className="h-4 w-[100px]" />
+              <Skeleton className="mt-1 h-5 w-[180px]" />
+            </div>
+            <div className="mt-4">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="mt-1 h-4 w-full" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

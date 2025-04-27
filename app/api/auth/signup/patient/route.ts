@@ -60,42 +60,15 @@ export async function POST(request: Request) {
     const userId = authData.user.id
     console.log("Auth user created with ID:", userId)
 
-    // 2. Create a user record in the users table
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .insert({
-        id: userId, // Use the auth user ID as the primary key
-        email: email,
-        role: "patient",
-        email_verified: false,
-      })
-      .select()
-
-    if (userError) {
-      console.error("Error creating user record:", userError)
-      // Try to delete the auth user if possible
-      try {
-        await supabase.auth.admin.deleteUser(userId)
-      } catch (deleteError) {
-        console.error("Error deleting auth user after user creation failed:", deleteError)
-      }
-      return NextResponse.json(
-        {
-          message: `Error creating user record: ${userError.message}`,
-          details: userError,
-        },
-        { status: 500 },
-      )
-    }
-
-    // 3. Now create the patient record in the patients table
+    // 2. Create the patient record in the patients table
     console.log("Creating patient record...")
 
-    // Create patient record with the same ID as the user record
+    // Create patient record with the auth user ID
     const patientData = {
-      id: userId, // Use the same ID as the user record to satisfy the foreign key constraint
+      id: userId, // Use the auth user ID
       first_name: firstName,
       last_name: lastName,
+      email: email, // Store email in the patients table
       date_of_birth: dateOfBirth,
       phone,
       address_line1: addressLine1,
@@ -111,9 +84,8 @@ export async function POST(request: Request) {
 
     if (patientError) {
       console.error("Error creating patient record:", patientError)
-      // Try to delete the user record and auth user if possible
+      // Try to delete the auth user if possible
       try {
-        await supabase.from("users").delete().eq("id", userId)
         await supabase.auth.admin.deleteUser(userId)
       } catch (deleteError) {
         console.error("Error cleaning up after patient creation failed:", deleteError)

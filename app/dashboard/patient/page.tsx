@@ -1,199 +1,214 @@
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import Link from "next/link"
-import { Calendar, CreditCard, Search, Clock, FileText, User, MapPin } from "lucide-react"
+import { redirect } from "next/navigation"
+import { Calendar, CreditCard, FileText, Heart, Search, Shield, User, Users } from "lucide-react"
+
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 
 export default async function PatientDashboard() {
+  // Get the user session
+  const session = await getServerSession(authOptions)
+
+  // If not authenticated or not a patient, redirect to sign in
+  if (!session || session.user.role !== "patient") {
+    redirect("/auth/signin")
+  }
+
+  // Get patient data from Supabase
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  const { data: patient, error } = await supabase.from("patients").select("*").eq("id", session.user.id).single()
 
-  if (!session) {
-    return null // Layout will handle redirect
-  }
-
-  // Get patient data
-  const { data: patientData, error } = await supabase.from("patients").select("*").eq("id", session.user.id).single()
-
-  if (error || !patientData) {
+  if (error || !patient) {
     console.error("Error fetching patient data:", error)
-    return null // Layout will handle redirect
+    redirect("/auth/signin")
   }
-
-  // For demo purposes, we'll create some mock data
-  const upcomingAppointments = []
-  const recentProcedures = []
-  const savedProviders = []
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Welcome, {patientData.first_name}!</h1>
-        <p className="text-gray-600 mt-2">Manage your healthcare journey with DirectPayDr</p>
+        <h1 className="text-3xl font-bold tracking-tight">Welcome, {patient.first_name}!</h1>
+        <p className="text-muted-foreground">Manage your healthcare needs and find affordable care options.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {/* Quick Actions Card */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="space-y-4">
-            <Link href="/procedures" className="flex items-center text-blue-600 hover:text-blue-800">
-              <Search className="h-5 w-5 mr-2" />
-              Find a Procedure
-            </Link>
-            <Link
-              href="/dashboard/patient/appointments"
-              className="flex items-center text-blue-600 hover:text-blue-800"
-            >
-              <Calendar className="h-5 w-5 mr-2" />
-              Schedule an Appointment
-            </Link>
-            <Link href="/dashboard/patient/billing" className="flex items-center text-blue-600 hover:text-blue-800">
-              <CreditCard className="h-5 w-5 mr-2" />
-              Make a Payment
-            </Link>
-          </div>
-        </div>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Common tasks you might want to do</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <Button variant="outline" className="justify-start" asChild>
+              <Link href="/dashboard/patient/procedures">
+                <Search className="mr-2 h-4 w-4" />
+                Find a Procedure
+              </Link>
+            </Button>
+            <Button variant="outline" className="justify-start" asChild>
+              <Link href="/dashboard/patient/providers">
+                <Users className="mr-2 h-4 w-4" />
+                Find a Provider
+              </Link>
+            </Button>
+            <Button variant="outline" className="justify-start" asChild>
+              <Link href="/dashboard/patient/billing">
+                <CreditCard className="mr-2 h-4 w-4" />
+                View Billing
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
 
-        {/* Health Summary Card */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Health Summary</h2>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Upcoming Appointments</span>
-              <span className="font-medium">{upcomingAppointments.length || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Recent Procedures</span>
-              <span className="font-medium">{recentProcedures.length || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Saved Providers</span>
-              <span className="font-medium">{savedProviders.length || 0}</span>
-            </div>
-          </div>
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <Link href="/dashboard/patient/health-records" className="text-blue-600 hover:text-blue-800 font-medium">
-              View Health Records
-            </Link>
-          </div>
-        </div>
-
-        {/* Insurance Info Card */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Insurance Information</h2>
-          {patientData.insurance_provider ? (
-            <div className="space-y-3">
+        {/* Health Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Health Summary</CardTitle>
+            <CardDescription>Your health at a glance</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="flex items-center gap-4">
+              <Heart className="h-5 w-5 text-rose-500" />
               <div>
-                <span className="text-gray-600 block">Provider</span>
-                <span className="font-medium">{patientData.insurance_provider}</span>
-              </div>
-              {patientData.insurance_policy_number && (
-                <div>
-                  <span className="text-gray-600 block">Policy Number</span>
-                  <span className="font-medium">{patientData.insurance_policy_number}</span>
-                </div>
-              )}
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <Link href="/dashboard/patient/insurance" className="text-blue-600 hover:text-blue-800 font-medium">
-                  Update Insurance Info
-                </Link>
+                <p className="text-sm font-medium">Health Profile</p>
+                <p className="text-sm text-muted-foreground">{patient.date_of_birth ? "Complete" : "Incomplete"}</p>
               </div>
             </div>
-          ) : (
-            <div>
-              <p className="text-gray-600 mb-4">No insurance information on file.</p>
-              <Link href="/dashboard/patient/insurance" className="text-blue-600 hover:text-blue-800 font-medium">
-                Add Insurance Info
+            <div className="flex items-center gap-4">
+              <Calendar className="h-5 w-5 text-blue-500" />
+              <div>
+                <p className="text-sm font-medium">Upcoming Appointments</p>
+                <p className="text-sm text-muted-foreground">None scheduled</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <FileText className="h-5 w-5 text-green-500" />
+              <div>
+                <p className="text-sm font-medium">Recent Procedures</p>
+                <p className="text-sm text-muted-foreground">None</p>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/dashboard/patient/profile">View Full Health Profile</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* Insurance Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Insurance Information</CardTitle>
+            <CardDescription>Your current insurance details</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="flex items-center gap-4">
+              <Shield className="h-5 w-5 text-indigo-500" />
+              <div>
+                <p className="text-sm font-medium">Provider</p>
+                <p className="text-sm text-muted-foreground">{patient.insurance_provider || "Not provided"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <FileText className="h-5 w-5 text-indigo-500" />
+              <div>
+                <p className="text-sm font-medium">Policy Number</p>
+                <p className="text-sm text-muted-foreground">{patient.insurance_policy_number || "Not provided"}</p>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/dashboard/patient/profile">Update Insurance Info</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+
+      <div className="mt-8 grid gap-6 md:grid-cols-2">
+        {/* Upcoming Appointments */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming Appointments</CardTitle>
+            <CardDescription>Your scheduled healthcare visits</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border p-4 text-center">
+              <p className="text-sm text-muted-foreground">You don't have any upcoming appointments.</p>
+              <Button className="mt-4" asChild>
+                <Link href="/dashboard/patient/procedures">Schedule an Appointment</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Find Care */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Find Care</CardTitle>
+            <CardDescription>Discover affordable healthcare options</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Button variant="outline" className="h-auto flex-col py-4" asChild>
+                <Link href="/procedures">
+                  <FileText className="mb-2 h-6 w-6" />
+                  <span>Browse Procedures</span>
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-auto flex-col py-4" asChild>
+                <Link href="/providers">
+                  <User className="mb-2 h-6 w-6" />
+                  <span>Find Providers</span>
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-auto flex-col py-4" asChild>
+                <Link href="/specialties">
+                  <Heart className="mb-2 h-6 w-6" />
+                  <span>Specialties</span>
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-auto flex-col py-4" asChild>
+                <Link href="/locations">
+                  <Users className="mb-2 h-6 w-6" />
+                  <span>Locations</span>
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Resources */}
+      <div className="mt-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Resources</CardTitle>
+            <CardDescription>Helpful information and tools</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Link href="/healthcare-prices" className="rounded-md border p-4 hover:bg-muted/50 transition-colors">
+                <h3 className="font-medium">Healthcare Pricing Guide</h3>
+                <p className="text-sm text-muted-foreground">Learn about transparent healthcare pricing</p>
+              </Link>
+              <Link href="/how-it-works" className="rounded-md border p-4 hover:bg-muted/50 transition-colors">
+                <h3 className="font-medium">How DirectPayDr Works</h3>
+                <p className="text-sm text-muted-foreground">Understand our direct-pay healthcare model</p>
+              </Link>
+              <Link href="/faq" className="rounded-md border p-4 hover:bg-muted/50 transition-colors">
+                <h3 className="font-medium">Frequently Asked Questions</h3>
+                <p className="text-sm text-muted-foreground">Find answers to common questions</p>
               </Link>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Upcoming Appointments Section */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Upcoming Appointments</h2>
-          <Link href="/dashboard/patient/appointments" className="text-blue-600 hover:text-blue-800 font-medium">
-            View All
-          </Link>
-        </div>
-
-        {upcomingAppointments.length > 0 ? (
-          <div className="space-y-4">{/* Appointment items would go here */}</div>
-        ) : (
-          <div className="text-center py-8">
-            <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Upcoming Appointments</h3>
-            <p className="text-gray-600 mb-4">Schedule your next appointment with one of our providers.</p>
-            <Link
-              href="/dashboard/patient/appointments/schedule"
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Schedule Now
-            </Link>
-          </div>
-        )}
-      </div>
-
-      {/* Find Care Section */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Find Care</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link href="/procedures" className="group">
-            <div className="bg-gray-50 rounded-lg p-6 transition-all group-hover:shadow-md">
-              <FileText className="h-8 w-8 text-blue-600 mb-3" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Browse Procedures</h3>
-              <p className="text-gray-600">Find procedures with upfront pricing and save up to 50%.</p>
-            </div>
-          </Link>
-
-          <Link href="/providers" className="group">
-            <div className="bg-gray-50 rounded-lg p-6 transition-all group-hover:shadow-md">
-              <User className="h-8 w-8 text-blue-600 mb-3" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Find Providers</h3>
-              <p className="text-gray-600">Search our network of quality healthcare providers.</p>
-            </div>
-          </Link>
-
-          <Link href="/locations" className="group">
-            <div className="bg-gray-50 rounded-lg p-6 transition-all group-hover:shadow-md">
-              <MapPin className="h-8 w-8 text-blue-600 mb-3" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Locations</h3>
-              <p className="text-gray-600">Find care near you in our expanding service areas.</p>
-            </div>
-          </Link>
-        </div>
-      </div>
-
-      {/* Resources Section */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Resources</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="border border-gray-200 rounded-lg p-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">How DirectPayDr Works</h3>
-            <p className="text-gray-600 mb-3">
-              Learn how to save on healthcare costs with our transparent pricing model.
-            </p>
-            <Link href="/how-it-works" className="text-blue-600 hover:text-blue-800 font-medium">
-              Learn More
-            </Link>
-          </div>
-
-          <div className="border border-gray-200 rounded-lg p-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Healthcare Savings Guide</h3>
-            <p className="text-gray-600 mb-3">Tips and strategies to maximize your healthcare savings.</p>
-            <Link href="/healthcare-prices" className="text-blue-600 hover:text-blue-800 font-medium">
-              Read Guide
-            </Link>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

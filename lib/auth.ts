@@ -1,6 +1,5 @@
 import type { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { compare } from "bcryptjs"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 
@@ -23,48 +22,62 @@ export const authOptions: NextAuthOptions = {
           const cookieStore = cookies()
           const supabase = createClient(cookieStore)
 
-          // Check if user exists
-          const { data: user, error: userError } = await supabase
-            .from("users")
-            .select("*")
-            .eq("email", credentials.email)
-            .single()
+          // First, try to authenticate with Supabase Auth
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: credentials.email,
+            password: credentials.password,
+          })
 
-          if (userError || !user) {
-            console.error("User not found:", userError)
+          if (authError || !authData.user) {
+            console.error("Authentication failed:", authError)
             return null
           }
 
-          // Check if email is verified
-          if (!user.email_verified) {
-            throw new Error("Please verify your email before logging in")
-          }
+          // Get user metadata to determine role
+          const role = authData.user.user_metadata?.role || "patient"
 
-          // Check password
-          const { data: auth, error: authError } = await supabase
-            .from("auth")
-            .select("*")
-            .eq("user_id", user.id)
-            .single()
+          // For patients, get additional data from patients table
+          if (role === "patient") {
+            const { data: patient, error: patientError } = await supabase
+              .from("patients")
+              .select("*")
+              .eq("id", authData.user.id)
+              .single()
 
-          if (authError || !auth) {
-            console.error("Auth record not found:", authError)
-            return null
-          }
+            if (patientError || !patient) {
+              console.error("Patient record not found:", patientError)
+              return null
+            }
 
-          const isPasswordValid = await compare(credentials.password, auth.password_hash)
+            // Return user object that will be saved in the JWT
+            return {
+              id: authData.user.id,
+              email: authData.user.email,
+              name: `${patient.first_name} ${patient.last_name}`,
+              role: "patient",
+              emailVerified: authData.user.email_confirmed_at ? new Date(authData.user.email_confirmed_at) : null,
+            }
+          } else {
+            // For other roles, check the users table
+            const { data: user, error: userError } = await supabase
+              .from("users")
+              .select("*")
+              .eq("id", authData.user.id)
+              .single()
 
-          if (!isPasswordValid) {
-            return null
-          }
+            if (userError || !user) {
+              console.error("User record not found:", userError)
+              return null
+            }
 
-          // Return user object that will be saved in the JWT
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            emailVerified: user.email_verified,
+            // Return user object that will be saved in the JWT
+            return {
+              id: authData.user.id,
+              email: authData.user.email,
+              name: user.name,
+              role: user.role,
+              emailVerified: user.email_verified,
+            }
           }
         } catch (error) {
           console.error("Authorization error:", error)

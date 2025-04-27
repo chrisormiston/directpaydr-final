@@ -1,62 +1,77 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { createClient } from "@/lib/supabase/middleware"
+import { getToken } from "next-auth/jwt"
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  const token = await getToken({ req: request })
+  const isAuthenticated = !!token
+  const isAuthPage =
+    request.nextUrl.pathname.startsWith("/auth/signin") ||
+    request.nextUrl.pathname.startsWith("/auth/signup") ||
+    request.nextUrl.pathname.startsWith("/auth/forgot-password")
 
-  // Create supabase middleware client
-  const { supabase, response } = createClient(request)
-
-  // Refresh session if expired
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  // Auth routes that don't require authentication
-  const authRoutes = ["/auth/signin", "/auth/signup", "/auth/forgot-password", "/auth/reset-password"]
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
-
-  // Dashboard routes that require authentication
-  const isDashboardRoute = pathname.startsWith("/dashboard")
-
-  // If accessing dashboard routes without a session, redirect to sign in
-  if (isDashboardRoute && !session) {
-    const redirectUrl = new URL("/auth/signin", request.url)
-    redirectUrl.searchParams.set("callbackUrl", pathname)
-    return NextResponse.redirect(redirectUrl)
+  // Redirect authenticated users away from auth pages
+  if (isAuthenticated && isAuthPage) {
+    // Redirect based on user role
+    if (token.role === "patient") {
+      return NextResponse.redirect(new URL("/dashboard/patient", request.url))
+    } else if (token.role === "provider") {
+      return NextResponse.redirect(new URL("/dashboard/provider", request.url))
+    } else if (token.role === "employer") {
+      return NextResponse.redirect(new URL("/dashboard/employer", request.url))
+    } else if (token.role === "admin") {
+      return NextResponse.redirect(new URL("/dashboard/admin", request.url))
+    } else {
+      return NextResponse.redirect(new URL("/", request.url))
+    }
   }
 
-  // If accessing auth routes with a session, redirect to appropriate dashboard
-  if (isAuthRoute && session) {
-    // Get user role from session
-    const role = session.user?.user_metadata?.role || "patient"
+  // Protect dashboard routes
+  if (request.nextUrl.pathname.startsWith("/dashboard")) {
+    if (!isAuthenticated) {
+      return NextResponse.redirect(new URL("/auth/signin", request.url))
+    }
 
-    // Redirect to appropriate dashboard based on role
-    return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
+    // Check role-specific access
+    if (
+      request.nextUrl.pathname.startsWith("/dashboard/patient") &&
+      token?.role !== "patient" &&
+      token?.role !== "admin"
+    ) {
+      return NextResponse.redirect(new URL("/auth/signin", request.url))
+    }
+
+    if (
+      request.nextUrl.pathname.startsWith("/dashboard/provider") &&
+      token?.role !== "provider" &&
+      token?.role !== "admin"
+    ) {
+      return NextResponse.redirect(new URL("/auth/signin", request.url))
+    }
+
+    if (
+      request.nextUrl.pathname.startsWith("/dashboard/employer") &&
+      token?.role !== "employer" &&
+      token?.role !== "admin"
+    ) {
+      return NextResponse.redirect(new URL("/auth/signin", request.url))
+    }
+
+    if (request.nextUrl.pathname.startsWith("/dashboard/admin") && token?.role !== "admin") {
+      return NextResponse.redirect(new URL("/auth/signin", request.url))
+    }
   }
 
-  // If accessing root with a session, redirect to appropriate dashboard
-  if (pathname === "/" && session) {
-    // Get user role from session
-    const role = session.user?.user_metadata?.role || "patient"
-
-    // Redirect to appropriate dashboard based on role
-    return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
+  // Protect admin routes
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    if (!isAuthenticated || token?.role !== "admin") {
+      return NextResponse.redirect(new URL("/auth/signin", request.url))
+    }
   }
 
-  return response
+  return NextResponse.next()
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public (public files)
-     */
-    "/((?!_next/static|_next/image|favicon.ico|public).*)",
-  ],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/auth/signin", "/auth/signup/:path*", "/auth/forgot-password"],
 }
