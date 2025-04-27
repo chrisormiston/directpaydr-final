@@ -11,14 +11,14 @@ export default function SignupSuccess() {
           <div className="flex justify-center mb-4">
             <CheckCircle className="h-16 w-16 text-green-500" />
           </div>
-          <CardTitle className="text-2xl font-bold">Registration Successful!</CardTitle>
-          <CardDescription>Your account has been created</CardDescription>
+          <CardTitle className="text-2xl font-bold">Account Created Successfully!</CardTitle>
+          <CardDescription>Thank you for creating an account with DirectPayDr</CardDescription>
         </CardHeader>
         <CardContent className="text-center">
           <p className="mb-4">
-            Thank you for registering with DirectPayDr. We've sent a verification email to your inbox.
+            We've sent a verification email to your inbox. Please check your email and click the verification link to
+            activate your account.
           </p>
-          <p className="mb-4">Please check your email and click the verification link to activate your account.</p>
           <p className="text-sm text-gray-500">If you don't see the email, please check your spam folder.</p>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">

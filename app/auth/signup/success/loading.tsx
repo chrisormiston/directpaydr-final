@@ -1,12 +1,28 @@
-import { Loader2 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 
 export default function SignupSuccessLoading() {
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="flex flex-col items-center space-y-4">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-        <h2 className="text-xl font-semibold">Loading...</h2>
-      </div>
+    <div className="container max-w-md mx-auto py-10 px-4">
+      <Card>
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <Skeleton className="h-16 w-16 rounded-full" />
+          </div>
+          <Skeleton className="h-8 w-3/4 mx-auto mb-2" />
+          <Skeleton className="h-4 w-full mx-auto" />
+        </CardHeader>
+        <CardContent className="text-center">
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-3/4 mx-auto" />
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </CardFooter>
+      </Card>
     </div>
   )
 }
