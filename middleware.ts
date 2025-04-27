@@ -1,67 +1,62 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getToken } from "next-auth/jwt"
-
-// Define protected routes and required roles
-const protectedRoutes = [
-  {
-    path: "/dashboard/patient",
-    roles: ["patient"],
-  },
-  {
-    path: "/dashboard/provider",
-    roles: ["provider"],
-  },
-  {
-    path: "/dashboard/employer",
-    roles: ["employer"],
-  },
-  {
-    path: "/dashboard/admin",
-    roles: ["admin"],
-  },
-  {
-    path: "/dashboard",
-    roles: ["patient", "provider", "employer", "admin"],
-  },
-]
+import { createClient } from "@/lib/supabase/middleware"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Check if the path is a protected route
-  const matchedRoute = protectedRoutes.find((route) => pathname.startsWith(route.path))
+  // Create supabase middleware client
+  const { supabase, response } = createClient(request)
 
-  // If it's not a protected route, allow the request
-  if (!matchedRoute) {
-    return NextResponse.next()
+  // Refresh session if expired
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  // Auth routes that don't require authentication
+  const authRoutes = ["/auth/signin", "/auth/signup", "/auth/forgot-password", "/auth/reset-password"]
+  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
+
+  // Dashboard routes that require authentication
+  const isDashboardRoute = pathname.startsWith("/dashboard")
+
+  // If accessing dashboard routes without a session, redirect to sign in
+  if (isDashboardRoute && !session) {
+    const redirectUrl = new URL("/auth/signin", request.url)
+    redirectUrl.searchParams.set("callbackUrl", pathname)
+    return NextResponse.redirect(redirectUrl)
   }
 
-  // Get the token
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-  })
+  // If accessing auth routes with a session, redirect to appropriate dashboard
+  if (isAuthRoute && session) {
+    // Get user role from session
+    const role = session.user?.user_metadata?.role || "patient"
 
-  // If there's no token, redirect to the sign-in page
-  if (!token) {
-    const url = new URL("/auth/signin", request.url)
-    url.searchParams.set("callbackUrl", encodeURI(request.url))
-    return NextResponse.redirect(url)
+    // Redirect to appropriate dashboard based on role
+    return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
   }
 
-  // Check if the user has the required role
-  const hasRequiredRole = matchedRoute.roles.includes(token.role as string)
+  // If accessing root with a session, redirect to appropriate dashboard
+  if (pathname === "/" && session) {
+    // Get user role from session
+    const role = session.user?.user_metadata?.role || "patient"
 
-  // If the user doesn't have the required role, redirect to unauthorized page
-  if (!hasRequiredRole) {
-    return NextResponse.redirect(new URL("/auth/unauthorized", request.url))
+    // Redirect to appropriate dashboard based on role
+    return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
   }
 
-  // Allow the request
-  return NextResponse.next()
+  return response
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/api/dashboard/:path*"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public (public files)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|public).*)",
+  ],
 }

@@ -1,24 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
-import bcrypt from "bcryptjs"
-import { v4 as uuidv4 } from "uuid"
-
-// Helper function to hash passwords
-async function hashPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(10)
-  return bcrypt.hash(password, salt)
-}
-
-// Helper function to generate a random token
-function generateToken(length = 32): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  let token = ""
-  for (let i = 0; i < length; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return token
-}
 
 export async function POST(request: Request) {
   try {
@@ -75,33 +57,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Error creating user: No data returned" }, { status: 500 })
     }
 
-    const authUserId = authData.user.id
-    console.log("Auth user created with ID:", authUserId)
+    const userId = authData.user.id
+    console.log("Auth user created with ID:", userId)
 
-    // 2. Now create the patient record in the patients table
-    console.log("Creating patient record...")
+    // 2. Create a user record in the users table
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .insert({
+        id: userId, // Use the auth user ID as the primary key
+        email: email,
+        role: "patient",
+        email_verified: false,
+      })
+      .select()
 
-    // First, let's check the schema of the patients table to ensure we're using the right column names
-    const { data: patientsColumns, error: schemaError } = await supabase
-      .from("information_schema.columns")
-      .select("column_name, table_name")
-      .eq("table_name", "patients")
-      .eq("table_schema", "public")
-
-    if (schemaError) {
-      console.error("Error fetching patients schema:", schemaError)
-    } else {
-      console.log("Patients table columns:", patientsColumns)
+    if (userError) {
+      console.error("Error creating user record:", userError)
+      // Try to delete the auth user if possible
+      try {
+        await supabase.auth.admin.deleteUser(userId)
+      } catch (deleteError) {
+        console.error("Error deleting auth user after user creation failed:", deleteError)
+      }
+      return NextResponse.json(
+        {
+          message: `Error creating user record: ${userError.message}`,
+          details: userError,
+        },
+        { status: 500 },
+      )
     }
 
-    // Generate a UUID for the patient record if needed
-    const patientId = uuidv4()
+    // 3. Now create the patient record in the patients table
+    console.log("Creating patient record...")
 
-    // Create patient record with fields that match your schema
-    // Using id instead of user_id, and address_line1/address_line2 instead of address
+    // Create patient record with the same ID as the user record
     const patientData = {
-      id: patientId, // Using id as the primary key
-      auth_user_id: authUserId, // Storing the auth user ID to link the records
+      id: userId, // Use the same ID as the user record to satisfy the foreign key constraint
       first_name: firstName,
       last_name: lastName,
       date_of_birth: dateOfBirth,
@@ -119,11 +111,12 @@ export async function POST(request: Request) {
 
     if (patientError) {
       console.error("Error creating patient record:", patientError)
-      // Try to delete the auth user if possible
+      // Try to delete the user record and auth user if possible
       try {
-        await supabase.auth.admin.deleteUser(authUserId)
+        await supabase.from("users").delete().eq("id", userId)
+        await supabase.auth.admin.deleteUser(userId)
       } catch (deleteError) {
-        console.error("Error deleting auth user after patient creation failed:", deleteError)
+        console.error("Error cleaning up after patient creation failed:", deleteError)
       }
 
       return NextResponse.json(
@@ -138,8 +131,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         message: "Patient account created successfully",
-        patientId,
-        authUserId,
+        userId,
       },
       { status: 201 },
     )
