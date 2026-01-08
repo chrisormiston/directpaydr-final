@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: "DirectPayDr - Transparent Healthcare Pricing",
   description:
     "Find and compare healthcare procedures with upfront pricing. DirectPayDr connects patients with providers offering transparent, affordable healthcare.",
-    generator: 'v0.dev'
+    generator: 'v0.app'
 }
 
 export default function RootLayout({
